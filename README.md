@@ -72,22 +72,22 @@ Helpful Options:
 ### Example Usage
 #### Download a Study
 ```
-fastq-dl.py PRJNA248678 SRA
-fastq-dl.py PRJNA248678 ENA
+fastq-dl PRJNA248678 SRA
+fastq-dl PRJNA248678 ENA
 ```
 
-The above commands will download 3 runs that fall under Study PRJNA248678 from either SRA (`fastq-dl.py PRJNA248678 SRA`) or ENA (`fastq-dl.py PRJNA248678 ENA`). The relationship of Study to Run is a 1-to-many relationship, or there can be many Run accessions associated with a single Study Accession. You could use `--group_by_experiment` to group these runs by Experiment accession (or `--group_by_sample` for Sample accession).
+The above commands will download 3 runs that fall under Study PRJNA248678 from either SRA (`fastq-dl PRJNA248678 SRA`) or ENA (`fastq-dl PRJNA248678 ENA`). The relationship of Study to Run is a 1-to-many relationship, or there can be many Run accessions associated with a single Study Accession. You could use `--group_by_experiment` to group these runs by Experiment accession (or `--group_by_sample` for Sample accession).
 
 #### Download an Experiment
 ```
-fastq-dl.py SRX477044 ENA
+fastq-dl SRX477044 ENA
 ```
 
 The above command would download the single run from ENA that falls under Experiment SRX477044. The relationship of Experiment to Run is a 1-to-many relationship, or there can be many Run accessions associated with a single Experiment Accession (e.g. resequencing the same sample). Although in most cases, especially for bacterial samples, it is a 1-to-1 relationship. In any case, you can use `--group_by_experiment` to merge multiple runs associated with an Experiment accession into a single FASTQ file (or `--group_by_sample` for Sample accession).
 
 #### Download a Run
 ```
-fastq-dl.py SRR1178105 SRA
+fastq-dl SRR1178105 SRA
 ```
 
 The above command would download the Run SRR1178105 from SRA. Run accessions are the end of the line (1-to-1 relationship)
@@ -96,7 +96,7 @@ The above command would download the Run SRR1178105 from SRA. Run accessions are
 Users can use [Aspera Connect](https://downloads.asperasoft.com/connect2/) to speed up the download of FASTQs from ENA. Installation and setup of Aspera Connect is out of the scope of this documentation, but I can assure you its a simple installation.
 
 ```
-fastq-dl.py SRR1178105 ENA --aspera /path/to/ascp
+fastq-dl SRR1178105 ENA --aspera /path/to/ascp
 ```
 
 The above command will attempt to download SRR1178105 using the `ascp` tool. By default it will try to use the private key file that is included during the Aspera Connect installation. If it is not found you will need to use the `--aspera_key` parameter to specify its path.
