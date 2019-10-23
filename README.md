@@ -16,7 +16,7 @@ conda install -c conda-forge -c bioconda fastq-dl
 ```
 
 # Usage
-*fastq-dl* requires a single ENA/SRA Study, Experiment, or Run accession and FASTQs for all Runs that fall under the given accession will be downloaded. For example, if a Study accession is given all Runs under that studies umbrella will be downloaded.
+*fastq-dl* requires a single ENA/SRA Study, Experiment, or Run accession and FASTQs for all Runs that fall under the given accession will be downloaded. For example, if a Study accession is given all Runs under that studies umbrella will be downloaded. Which archive to download from, either *ENA* or *SRA*, is also required.
 
 ### Usage Output
 ```
@@ -76,15 +76,14 @@ fastq-dl.py PRJNA248678 SRA
 fastq-dl.py PRJNA248678 ENA
 ```
 
-The above command would download 3 runs that fall under Study PRJNA248678 from either SRA or ENA. The relationship of Study to Run is a 1-to-many relationship, or there can be many Run accessions associated with a single Study Accession. You could use `--group_by_experiment` to group these runs by Experiment accession (or `--group_by_sample` for Sample accession).
+The above commands will download 3 runs that fall under Study PRJNA248678 from either SRA (`fastq-dl.py PRJNA248678 SRA`) or ENA (`fastq-dl.py PRJNA248678 ENA`). The relationship of Study to Run is a 1-to-many relationship, or there can be many Run accessions associated with a single Study Accession. You could use `--group_by_experiment` to group these runs by Experiment accession (or `--group_by_sample` for Sample accession).
 
 #### Download an Experiment
 ```
-fastq-dl.py SRX477044 SRA
 fastq-dl.py SRX477044 ENA
 ```
 
-The above command would download the single run from ENA or SRA that falls under Experiment SRX477044. The relationship of Experiment to Run is a 1-to-many relationship, or there can be many Run accessions associated with a single Experiment Accession (e.g. resequencing the same sample). Although in most cases, especially for bacterial samples, it is a 1-to-1 relationship. In any case, you can use `--group_by_experiment` to merge multiple runs associated with an Experiment accession into a single FASTQ file (or `--group_by_sample` for Sample accession).
+The above command would download the single run from ENA that falls under Experiment SRX477044. The relationship of Experiment to Run is a 1-to-many relationship, or there can be many Run accessions associated with a single Experiment Accession (e.g. resequencing the same sample). Although in most cases, especially for bacterial samples, it is a 1-to-1 relationship. In any case, you can use `--group_by_experiment` to merge multiple runs associated with an Experiment accession into a single FASTQ file (or `--group_by_sample` for Sample accession).
 
 #### Download a Run
 ```
