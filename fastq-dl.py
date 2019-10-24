@@ -46,17 +46,14 @@ Helpful Options:
   --version             show program's version number and exit
 
 Example:
-fastq-dl.py SRX477044
+fastq-dl SRX477044 SRA
 """
-PROGRAM = "ena-dl"
-VERSION = "1.0.0"
 import logging
 import os
 import time
 
-
 PROGRAM = "fastq-dl"
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 STDOUT = 11
 STDERR = 12
 logging.addLevelName(STDOUT, "STDOUT")
@@ -189,9 +186,9 @@ def ena_download(run, outdir, aspera=None, max_attempts=10, ftp_only=False):
     return fastqs
 
 
-def md5sum(file):
+def md5sum(fastq):
     """Return the MD5SUM of an input file."""
-    if os.path.exists(file):
+    if os.path.exists(fastq):
         stdout = execute(f'md5sum {fastq}', capture_stdout=True)
         if stdout:
             md5sum, filename = stdout.split()
@@ -218,14 +215,15 @@ def download_ena_fastq(fasp, ftp, outdir, md5, aspera, max_attempts=10, ftp_only
             else:
                 logging.info(f'\t\tAspera Connect download attempt {attempt + 1}')
                 execute((f'{aspera["ascp"]} -QT -l {aspera["speed"]} -P33001 '
-                         f'-i {aspera["private_key"]} era-fasp@{fasp}'),
+                         f'-i {aspera["private_key"]} era-fasp@{fasp} ./'),
                     directory=outdir,
                     max_attempts=max_attempts
                 )
 
-            if md5sum(fastq) != md5:
+            fastq_md5 = md5sum(fastq)
+            if fastq_md5 != md5:
+                logging.log(STDOUT, f'MD5s, Observed: {fastq_md5}, Expected: {md5}')
                 attempt += 1
-                execute('')
                 if os.path.exists(fastq):
                     os.remove(fastq)
                 if attempt > max_attempts:
@@ -233,16 +231,14 @@ def download_ena_fastq(fasp, ftp, outdir, md5, aspera, max_attempts=10, ftp_only
                         ftp_only = True
                         attempt = 0
                     else:
-                        break
+                        logging.error(
+                            f'Download failed after {max_attempts} attempts. '
+                            'Please try again later or manually from SRA/ENA.'
+                        )
+                        sys.exit(1)
                 time.sleep(10)
             else:
-                logging.error(
-                    f'Download failed after {args.max_attempts} attempts. '
-                    'Please try again later or manually from SRA/ENA.'
-                )
-                sys.exit(1)
-    else:
-        success = True
+                success = True
 
     return fastq
 
