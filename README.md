@@ -24,8 +24,8 @@ usage: fastq-dl [-h] [--aspera STRING] [--aspera_key STRING]
                 [--aspera_speed STRING] [--is_study] [--is_experiment]
                 [--is_run] [--group_by_experiment] [--group_by_sample]
                 [--outdir OUTPUT_DIR] [--prefix PREFIX] [--max_attempts INT]
-                [--cpus INT] [--ftp_only] [--silent] [--verbose] [--debug]
-                [--version]
+                [--cpus INT] [--ftp_only] [--sra_only] [--silent] [--verbose]
+                [--debug] [--version]
                 ACCESSION {sra,SRA,ena,ENA}
 
 fastq-dl - Download FASTQs from ENA or SRA
@@ -63,6 +63,8 @@ Helpful Options:
   --max_attempts INT    Maximum number of download attempts (Default: 10)
   --cpus INT            Total cpus used for downloading from SRA (Default: 1)
   --ftp_only            FTP only downloads.
+  --sra_only            Do not attempt to fall back on ENA if SRA download
+                        does not work (e.g. missing FASTQ).
   --silent              Only critical errors will be printed.
   --verbose             Print debug related text.
   --debug               Skip downloads, print what will be downloaded.
