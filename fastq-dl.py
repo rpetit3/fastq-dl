@@ -53,7 +53,7 @@ import os
 import time
 
 PROGRAM = "fastq-dl"
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 STDOUT = 11
 STDERR = 12
 logging.addLevelName(STDOUT, "STDOUT")
@@ -91,7 +91,7 @@ def get_log_level():
 
 
 def execute(cmd, directory=os.getcwd(), capture_stdout=False, stdout_file=None,
-            stderr_file=None, max_attempts=1):
+            stderr_file=None, max_attempts=1, is_sra=False):
     """A simple wrapper around executor."""
     from executor import ExternalCommand, ExternalCommandFailed
     attempt = 0
@@ -114,6 +114,14 @@ def execute(cmd, directory=os.getcwd(), capture_stdout=False, stdout_file=None,
                 return command.returncode
         except ExternalCommandFailed as error:
             logging.error(f'"{cmd}" return exit code {command.returncode}')
+            
+
+            if is_sra and command.returncode == 3:
+                # The FASTQ isn't on SRA for some reason, try to download from ENA
+                error_msg = command.decoded_stderr.split("\n")[0]
+                logging.error(error_msg)
+                return 'SRA_NOT_FOUND'
+
             if attempt < max_attempts:
                 logging.error(f'Retry execution ({attempt} of {max_attempts})')
                 time.sleep(10)
@@ -129,9 +137,12 @@ def sra_download(accession, outdir, cpus=1, max_attempts=10):
 
     if not os.path.exists(se) and not os.path.exists(pe):
         execute(f'mkdir -p {outdir}')
-        execute(f'fasterq-dump {accession} --split-files --threads {cpus}',
-                max_attempts=max_attempts, directory=outdir)
-        execute(f'pigz -p {cpus} -n --fast *.fastq', directory=outdir)
+        outcome = execute(f'fasterq-dump {accession} --split-files --threads {cpus}',
+                            max_attempts=max_attempts, directory=outdir, is_sra=True)
+        if outcome == "SRA_NOT_FOUND":
+            return outcome
+        else:
+            execute(f'pigz -p {cpus} -n --fast *.fastq', directory=outdir)
 
     if os.path.exists(f'{outdir}/{accession}_2.fastq.gz'):
         # Paired end
@@ -373,6 +384,10 @@ if __name__ == '__main__':
     group4.add_argument('--cpus', metavar="INT", type=int, default=1,
                         help='Total cpus used for downloading from SRA (Default: 1)')
     group4.add_argument('--ftp_only', action='store_true', help='FTP only downloads.')
+    group4.add_argument(
+        '--sra_only', action='store_true', 
+        help='Do not attempt to fall back on ENA if SRA download does not work (e.g. missing FASTQ).'
+    )
     group4.add_argument('--silent', action='store_true',
                         help='Only critical errors will be printed.')
     group4.add_argument('--verbose', action='store_true',
@@ -393,8 +408,9 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(set_log_level(args.silent, args.verbose))
 
     aspera = check_aspera(args.aspera, args.aspera_key, args.aspera_speed) if args.aspera else None
-    if not aspera and args.provider == 'ENA':
-        logging.info("Aspera Connect not available, using FTP for ENA downloads")
+    if not aspera:
+        if args.provider == 'ENA':
+            logging.info("Aspera Connect not available, using FTP for ENA downloads")
         args.ftp_only = True
 
     outdir = os.getcwd() if args.outdir == './' else f'{args.outdir}'
@@ -406,7 +422,7 @@ if __name__ == '__main__':
     logging.info(f'Archive: {args.provider}')
     logging.info(f'Total Runs To Download: {len(ena_data)}')
     runs = {} if args.group_by_experiment or args.group_by_sample else None
-    for run in ena_data:
+    for i, run in enumerate(ena_data):
         logging.info(f'\tWorking on run {run["run_accession"]}...')
         fastqs = None
         if args.provider.lower() == 'ena':
@@ -416,21 +432,34 @@ if __name__ == '__main__':
         else:
             fastqs = sra_download(run["run_accession"], outdir, cpus=args.cpus,
                                   max_attempts=args.max_attempts)
+            if fastqs == "SRA_NOT_FOUND":
+                if args.sra_only:
+                    logging.error(f'\t{run["run_accession"]} not found on SRA')
+                    ena_data[i]["error"] = 'SRA_NOT_FOUND'
+                    fastqs = None
+                else:
+                    # Retry download from ENA
+                    logging.info(f'\t{run["run_accession"]} not found on SRA, retrying from ENA')
+                    fastqs = ena_download(run, outdir, aspera=aspera,
+                                          max_attempts=args.max_attempts,
+                                          ftp_only=args.ftp_only)
+
 
         # Add the download results
-        if args.group_by_experiment or args.group_by_sample:
-            name = run["sample_accession"]
-            if args.group_by_experiment:
-                name = run["experiment_accession"]
+        if fastqs:
+            if args.group_by_experiment or args.group_by_sample:
+                name = run["sample_accession"]
+                if args.group_by_experiment:
+                    name = run["experiment_accession"]
 
-            if name not in runs:
-                runs[name] = {'r1': [], 'r2': []}
+                if name not in runs:
+                    runs[name] = {'r1': [], 'r2': []}
 
-            if fastqs['single_end']:
-                runs[name]['r1'].append(fastqs['r1'])
-            else:
-                runs[name]['r1'].append(fastqs['r1'])
-                runs[name]['r2'].append(fastqs['r2'])
+                if fastqs['single_end']:
+                    runs[name]['r1'].append(fastqs['r1'])
+                else:
+                    runs[name]['r1'].append(fastqs['r1'])
+                    runs[name]['r2'].append(fastqs['r2'])
 
     # If applicable, merge runs
     if runs and not args.debug:
