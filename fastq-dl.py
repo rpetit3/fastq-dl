@@ -53,7 +53,7 @@ import os
 import time
 
 PROGRAM = "fastq-dl"
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 STDOUT = 11
 STDERR = 12
 logging.addLevelName(STDOUT, "STDOUT")
@@ -257,13 +257,9 @@ def download_ena_fastq(fasp, ftp, outdir, md5, aspera, max_attempts=10, ftp_only
 def merge_runs(runs, output):
     """Merge runs from an experiment."""
     if len(runs) > 1:
-        cat_cmd = ['cat']
-        rm_cmd = ['rm']
-        for run in runs:
-            cat_cmd.append(run)
-            rm_cmd.append(run)
-        execute(' '.join(cat_cmd), stdout=output)
-        execute(' '.join(rm_cmd))
+        run_fqs = ' '.join(runs)
+        execute(f'cat {run_fqs} > {output}')
+        execute(f'rm {run_fqs}')
     else:
         execute(f'mv {runs[0]} {output}')
 
