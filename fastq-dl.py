@@ -59,9 +59,7 @@ STDERR = 12
 logging.addLevelName(STDOUT, "STDOUT")
 logging.addLevelName(STDERR, "STDERR")
 
-
-ENA_URL = ('https://www.ebi.ac.uk/ena/data/warehouse/search?result=read_run&'
-           'display=report')
+ENA_URL = ('https://www.ebi.ac.uk/ena/portal/api/search?result=read_run&format=tsv')
 FIELDS = [
     'study_accession', 'secondary_study_accession', 'sample_accession',
     'secondary_sample_accession', 'experiment_accession', 'run_accession',
@@ -115,7 +113,6 @@ def execute(cmd, directory=os.getcwd(), capture_stdout=False, stdout_file=None,
         except ExternalCommandFailed as error:
             logging.error(f'"{cmd}" return exit code {command.returncode}')
             
-
             if is_sra and command.returncode == 3:
                 # The FASTQ isn't on SRA for some reason, try to download from ENA
                 error_msg = command.decoded_stderr.split("\n")[0]
@@ -268,6 +265,7 @@ def get_run_info(experiment):
     """Retreive a list of unprocessed samples avalible from ENA."""
     import requests
     url = f'{ENA_URL}&query="{query}"&fields={",".join(FIELDS)}'
+    headers = {'Content-type': 'application/x-www-form-urlencoded'}
     r = requests.get(url)
     if r.status_code == requests.codes.ok:
         data = []
@@ -279,9 +277,9 @@ def get_run_info(experiment):
                     data.append(dict(zip(col_names, cols)))
                 else:
                     col_names = cols
-        return data
+        return [True, data]
     else:
-        return False
+        return [False, [r.status_code, r.text]]
 
 
 def write_json(data, output):
@@ -413,7 +411,13 @@ if __name__ == '__main__':
     query = parse_query(args.query, args.is_study, args.is_experiment, args.is_run)
 
     # Start Download Process
-    ena_data = get_run_info(query)
+    success, ena_data = get_run_info(query)
+    if not success:
+        logging.error("There was an issue querying ENA, exiting...")
+        logging.error(f"STATUS: {ena_data[0]}")
+        logging.error(f"TEXT: {ena_data[1]}")
+        sys.exit(1)
+
     logging.info(f'Query: {args.query}')
     logging.info(f'Archive: {args.provider}')
     logging.info(f'Total Runs To Download: {len(ena_data)}')
