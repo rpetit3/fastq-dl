@@ -53,7 +53,7 @@ import os
 import time
 
 PROGRAM = "fastq-dl"
-VERSION = "1.0.3"
+VERSION = "1.0.5"
 STDOUT = 11
 STDERR = 12
 logging.addLevelName(STDOUT, "STDOUT")
@@ -126,8 +126,41 @@ def execute(cmd, directory=os.getcwd(), capture_stdout=False, stdout_file=None,
                 raise error
 
 
+def check_sratools():
+    """ Check whether the use has completed the interactive step for sra-toolkit. """
+    import uuid
+    needs_setup = False
+    HOME = execute(f'echo $HOME', capture_stdout=True).rstrip()
+    NCBI_HOME = f'{HOME}/.ncbi'
+    NCBI_USER = f'{NCBI_HOME}/user-settings.mkfg'
+    if (not os.path.exists(NCBI_HOME)):
+        logging.info(f'\tDirectory "{NCBI_HOME}" not found, setting up.')
+        execute(f'mkdir -p {NCBI_HOME}')
+        needs_setup = True
+    elif (not os.path.exists(NCBI_USER)):
+        logging.info(f'\tFile "{NCBI_USER}" not found, setting up.')
+        needs_setup = True
+    else:
+        with open(NCBI_USER, 'rt') as ncbi_fh:
+            uuid_found = False
+            for line in ncbi_fh:
+                if "/LIBS/GUID" in line:
+                    uuid_found = True
+        if not uuid_found:
+            needs_setup = True
+            logging.info(f'\tUUID not found in "{NCBI_USER}", setting up.')
+
+    if needs_setup:
+        uuid = str(uuid.uuid4())
+        execute(f'touch {NCBI_USER}')
+        with open(NCBI_USER, 'a') as ncbi_fh:
+            ncbi_fh.write(f'/LIBS/GUID = "{uuid}"\n')
+        logging.info(f'\tAdded randomly generated UUID to {NCBI_USER}')
+
+
 def sra_download(accession, outdir, cpus=1, max_attempts=10):
     """Download FASTQs from SRA using fasterq-dump."""
+    check_sratools()
     fastqs = {'r1':'', 'r2': '', 'single_end': True}
     se = f'{outdir}/{accession}.fastq.gz'
     pe = f'{outdir}/{accession}_2.fastq.gz'
