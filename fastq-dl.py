@@ -53,7 +53,7 @@ import os
 import time
 
 PROGRAM = "fastq-dl"
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 STDOUT = 11
 STDERR = 12
 logging.addLevelName(STDOUT, "STDOUT")
@@ -252,7 +252,7 @@ def download_ena_fastq(fasp, ftp, outdir, md5, aspera, max_attempts=10, ftp_only
         while not success:
             if ftp_only:
                 logging.info(f'\t\tFTP download attempt {attempt + 1}')
-                execute(f'wget --quiet -O {fastq} {ftp}', max_attempts=max_attempts)
+                execute(f'wget --quiet -O {fastq} ftp://{ftp}', max_attempts=max_attempts)
             else:
                 logging.info(f'\t\tAspera Connect download attempt {attempt + 1}')
                 execute((f'{aspera["ascp"]} -QT -l {aspera["speed"]} -P33001 '
