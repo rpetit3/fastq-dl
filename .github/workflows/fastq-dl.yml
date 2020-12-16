@@ -1,23 +1,19 @@
 name: fastq-dl
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main, master, dev ]
   pull_request:
-    branches: [ main, dev ]
+    branches: [ main, master, dev ]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Install fastq-dl
         run: conda create -y -n fastq-dl -c conda-forge -c bioconda fastq-dl
       - uses: actions/checkout@v2
-        path: fastq-dl
+        with:
+          path: fastq-dl
       - name: Staging
         run: |
          echo "${CONDA}/envs/fastq-dl/bin" >> $GITHUB_PATH
