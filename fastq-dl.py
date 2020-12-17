@@ -172,7 +172,7 @@ def sra_download(accession, outdir, cpus=1, max_attempts=10):
         if outcome == "SRA_NOT_FOUND":
             return outcome
         else:
-            execute(f'pigz -p {cpus} -n --fast *.fastq', directory=outdir)
+            execute(f'pigz --force -p {cpus} -n --fast *.fastq', directory=outdir)
 
     if os.path.exists(f'{outdir}/{accession}_2.fastq.gz'):
         # Paired end
