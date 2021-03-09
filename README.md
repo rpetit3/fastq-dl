@@ -12,7 +12,8 @@ fastq-dl, is a spin-off of [ena-dl](https://github.com/rpetit3/ena-dl), that has
 ### Bioconda
 fastq-dl is available from [Bioconda](https://bioconda.github.io/) and I highly recommend you go this route to for installation.
 ```
-conda install -c conda-forge -c bioconda fastq-dl
+conda create -n fastq-dl -c conda-forge -c bioconda fastq-dl
+conda activate fastq-dl 
 ```
 
 # Usage
