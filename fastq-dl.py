@@ -615,7 +615,7 @@ if __name__ == "__main__":
                     fastqs = None
                 else:
                     # Retry download from SRA
-                    logging.info(f"\t{run_info} not found on ENA, retrying from SRA")
+                    logging.info(f"\t{run_acc} not found on ENA, retrying from SRA")
 
                     fastqs = sra_download(
                         run_acc,
