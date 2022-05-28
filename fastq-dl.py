@@ -56,7 +56,8 @@ PROGRAM = "fastq-dl"
 VERSION = "1.0.6"
 STDOUT = 11
 STDERR = 12
-NO_FASTQ = "NO_FASTQ"
+ENA_FAILED = "ENA_NOT_FOUND"
+SRA_FAILED = "SRA_NOT_FOUND"
 logging.addLevelName(STDOUT, "STDOUT")
 logging.addLevelName(STDERR, "STDERR")
 
@@ -167,7 +168,7 @@ def execute(
                 # The FASTQ isn't on SRA for some reason, try to download from ENA
                 error_msg = command.decoded_stderr.split("\n")[0]
                 logging.error(error_msg)
-                return "SRA_NOT_FOUND"
+                return SRA_FAILED
 
             if attempt < max_attempts:
                 logging.error(f"Retry execution ({attempt} of {max_attempts})")
@@ -224,7 +225,7 @@ def sra_download(accession, outdir, cpus=1, max_attempts=10):
             directory=outdir,
             is_sra=True,
         )
-        if outcome == "SRA_NOT_FOUND":
+        if outcome == SRA_FAILED:
             return outcome
         else:
             execute(f"pigz --force -p {cpus} -n --fast *.fastq", directory=outdir)
@@ -242,11 +243,13 @@ def sra_download(accession, outdir, cpus=1, max_attempts=10):
 
 def ena_download(run, outdir, aspera=None, max_attempts=10, ftp_only=False):
     fastqs = {"r1": "", "r2": "", "single_end": True}
-    fasp = run["fastq_aspera"].split(";")
-    ftp = run["fastq_ftp"].split(";")
+    fasp = run["fastq_aspera"]
+    ftp = run["fastq_ftp"]
     if not ftp and not fasp:
-        return NO_FASTQ
+        return ENA_FAILED
 
+    fasp = fasp.split(";")
+    ftp = ftp.split(";")
     md5 = run["fastq_md5"].split(";")
     for i in range(len(fasp)):
         is_r2 = False
@@ -262,7 +265,7 @@ def ena_download(run, outdir, aspera=None, max_attempts=10, ftp_only=False):
                 pass
             else:
                 # Example: ERR1143237.fastq.gz
-                # Not apart of the paired end read, so skip this file. Or,
+                # Not a part of the paired end read, so skip this file. Or,
                 # its the only fastq file, and its not a paired
                 obs_fq = os.path.basename(fasp[i])
                 exp_fq = f'{run["run_accession"]}.fastq.gz'
@@ -593,7 +596,8 @@ if __name__ == "__main__":
     logging.info(f"Total Runs To Download: {len(ena_data)}")
     runs = {} if args.group_by_experiment or args.group_by_sample else None
     for i, run_info in enumerate(ena_data):
-        logging.info(f'\tWorking on run {run_info["run_accession"]}...')
+        run_acc = run_info["run_accession"]
+        logging.info(f"\tWorking on run {run_acc}...")
         fastqs = None
         if args.provider.lower() == "ena":
             fastqs = ena_download(
@@ -604,33 +608,41 @@ if __name__ == "__main__":
                 ftp_only=args.ftp_only,
             )
 
-            if fastqs == NO_FASTQ:
-                if args.ena_only:
-                    logging.error(
-                        f'\tNo fastqs found in ENA for {run_info["run_accession"]}'
-                    )
-                    ena_data[i]["error"] = NO_FASTQ
+            if fastqs == ENA_FAILED:
+                if args.only_provider:
+                    logging.error(f"\tNo fastqs found in ENA for {run_acc}")
+                    ena_data[i]["error"] = ENA_FAILED
                     fastqs = None
                 else:
-                    #todo
+                    # Retry download from SRA
+                    logging.info(f"\t{run_info} not found on ENA, retrying from SRA")
+
+                    fastqs = sra_download(
+                        run_acc,
+                        outdir,
+                        cpus=args.cpus,
+                        max_attempts=args.max_attempts,
+                    )
+                    if fastqs == SRA_FAILED:
+                        logging.error(f"\t{run_acc} not found on SRA")
+                        ena_data[i]["error"] = f"{ENA_FAILED}&{SRA_FAILED}"
+                        fastqs = None
 
         else:
             fastqs = sra_download(
-                run_info["run_accession"],
+                run_acc,
                 outdir,
                 cpus=args.cpus,
                 max_attempts=args.max_attempts,
             )
-            if fastqs == "SRA_NOT_FOUND":
-                if args.sra_only:
-                    logging.error(f'\t{run_info["run_accession"]} not found on SRA')
-                    ena_data[i]["error"] = "SRA_NOT_FOUND"
+            if fastqs == SRA_FAILED:
+                if args.sra_only or args.only_provider:
+                    logging.error(f"\t{run_acc} not found on SRA")
+                    ena_data[i]["error"] = SRA_FAILED
                     fastqs = None
                 else:
                     # Retry download from ENA
-                    logging.info(
-                        f'\t{run_info["run_accession"]} not found on SRA, retrying from ENA'
-                    )
+                    logging.info(f"\t{run_acc} not found on SRA, retrying from ENA")
                     fastqs = ena_download(
                         run_info,
                         outdir,
@@ -638,6 +650,10 @@ if __name__ == "__main__":
                         max_attempts=args.max_attempts,
                         ftp_only=args.ftp_only,
                     )
+                    if fastqs == ENA_FAILED:
+                        logging.error(f"\tNo fastqs found in ENA for {run_acc}")
+                        ena_data[i]["error"] = f"{SRA_FAILED}&{ENA_FAILED}"
+                        fastqs = None
 
         # Add the download results
         if fastqs:
