@@ -54,6 +54,7 @@ import logging
 import os
 import sys
 import time
+from pathlib import Path
 from uuid import uuid4
 
 import requests
@@ -185,32 +186,32 @@ def execute(
 def check_sratools():
     """Check whether the use has completed the interactive step for sra-toolkit."""
     needs_setup = False
-    HOME = execute(f"echo $HOME", capture_stdout=True).rstrip()
-    NCBI_HOME = f"{HOME}/.ncbi"
-    NCBI_USER = f"{NCBI_HOME}/user-settings.mkfg"
-    if not os.path.exists(NCBI_HOME):
-        logging.info(f'\tDirectory "{NCBI_HOME}" not found, setting up.')
-        execute(f"mkdir -p {NCBI_HOME}")
+    home = Path(os.environ["HOME"])
+    ncbi_home = home / ".ncbi"
+    ncbi_user = ncbi_home / "user-settings.mkfg"
+    if not ncbi_home.exists():
+        logging.info(f'\tDirectory "{ncbi_home}" not found, setting up.')
+        ncbi_home.mkdir(parents=True)
         needs_setup = True
-    elif not os.path.exists(NCBI_USER):
-        logging.info(f'\tFile "{NCBI_USER}" not found, setting up.')
+    elif not ncbi_user.exists():
+        logging.info(f'\tFile "{ncbi_user}" not found, setting up.')
         needs_setup = True
     else:
-        with open(NCBI_USER, "rt") as ncbi_fh:
+        with open(ncbi_user, "rt") as ncbi_fh:
             uuid_found = False
             for line in ncbi_fh:
                 if "/LIBS/GUID" in line:
                     uuid_found = True
         if not uuid_found:
             needs_setup = True
-            logging.info(f'\tUUID not found in "{NCBI_USER}", setting up.')
+            logging.info(f'\tUUID not found in "{ncbi_user}", setting up.')
 
     if needs_setup:
         uuid = str(uuid4())
-        execute(f"touch {NCBI_USER}")
-        with open(NCBI_USER, "a") as ncbi_fh:
+        ncbi_user.touch()
+        with open(ncbi_user, "a") as ncbi_fh:
             ncbi_fh.write(f'/LIBS/GUID = "{uuid}"\n')
-        logging.info(f"\tAdded randomly generated UUID to {NCBI_USER}")
+        logging.info(f"\tAdded randomly generated UUID to {ncbi_user}")
 
 
 def sra_download(accession, outdir, cpus=1, max_attempts=10):
@@ -471,7 +472,9 @@ if __name__ == "__main__":
         "--aspera_key",
         metavar="STRING",
         type=str,
-        help="Path to Aspera Connect private key, if not given, guess based on ascp path",
+        help=(
+            "Path to Aspera Connect private key, if not given, guess based on ascp path"
+        ),
     )
     group2.add_argument(
         "--aspera_speed",
