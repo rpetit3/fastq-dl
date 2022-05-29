@@ -176,7 +176,7 @@ def sra_download(accession, outdir, cpus=1, max_attempts=10):
     pe = f"{outdir}/{accession}_2.fastq.gz"
 
     if not os.path.exists(se) and not os.path.exists(pe):
-        execute(f"mkdir -p {outdir}")
+        Path(outdir).mkdir(parents=True)
         outcome = execute(
             f"fasterq-dump {accession} --split-files --threads {cpus}",
             max_attempts=max_attempts,
@@ -273,7 +273,7 @@ def download_ena_fastq(fasp, ftp, outdir, md5, aspera, max_attempts=10, ftp_only
     fastq = f"{outdir}/{os.path.basename(fasp)}"
 
     if not os.path.exists(fastq):
-        execute(f"mkdir -p {outdir}")
+        Path(outdir).mkdir(parents=True)
 
         while not success:
             if ftp_only:
@@ -320,9 +320,10 @@ def merge_runs(runs, output):
     if len(runs) > 1:
         run_fqs = " ".join(runs)
         execute(f"cat {run_fqs} > {output}")
-        execute(f"rm {run_fqs}")
+        for p in runs:
+            Path(p).unlink()
     else:
-        execute(f"mv {runs[0]} {output}")
+        Path(runs[0]).rename(output)
 
 
 def get_run_info(query):
