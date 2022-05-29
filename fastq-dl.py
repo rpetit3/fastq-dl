@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-import argparse as ap
+import argparse
 import hashlib
 import json
 import logging
@@ -399,7 +399,7 @@ def check_aspera(ascp, private_key, speed):
 
 
 def main():
-    parser = ap.ArgumentParser(
+    parser = argparse.ArgumentParser(
         prog=PROGRAM,
         conflict_handler="resolve",
         description=f"{PROGRAM} (v{VERSION}) - Download FASTQs from ENA or SRA",
@@ -416,7 +416,10 @@ def main():
         choices=["sra", "ena"],
         type=str.lower,
         default="ena",
-        help="Specify which provider (ENA or SRA) to use. Accepted Values: ENA SRA",
+        help=(
+            "Specify which provider (ENA or SRA) to use. Accepted Values: ENA SRA "
+            "[default: %(default)s]"
+        ),
     )
 
     group2 = parser.add_argument_group("Aspera Connect Options")
@@ -439,7 +442,7 @@ def main():
         metavar="STRING",
         type=str,
         default="100M",
-        help="Speed at which Aspera Connect will download. (Default: 100M)",
+        help="Speed at which Aspera Connect will download. [default: %(default)s]",
     )
 
     group3 = parser.add_argument_group("Query Related Options")
@@ -463,28 +466,28 @@ def main():
         metavar="OUTPUT_DIR",
         type=str,
         default="./",
-        help="Directory to output downloads to. (Default: ./)",
+        help="Directory to output downloads to. [default: %(default)s]",
     )
     group4.add_argument(
         "--prefix",
         metavar="PREFIX",
         type=str,
         default="fastq",
-        help="Prefix to use for naming log files (Default: fastq)",
+        help="Prefix to use for naming log files [default: %(default)s]",
     )
     group4.add_argument(
         "--max_attempts",
         metavar="INT",
         type=int,
         default=10,
-        help="Maximum number of download attempts (Default: 10)",
+        help="Maximum number of download attempts [default: %(default)d]",
     )
     group4.add_argument(
         "--cpus",
         metavar="INT",
         type=int,
         default=1,
-        help="Total cpus used for downloading from SRA (Default: 1)",
+        help="Total cpus used for downloading from SRA [default: %(default)d]",
     )
     group4.add_argument("--ftp_only", action="store_true", help="FTP only downloads.")
     group4.add_argument(
