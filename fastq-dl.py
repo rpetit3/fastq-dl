@@ -48,9 +48,16 @@ Helpful Options:
 Example:
 fastq-dl SRX477044 SRA
 """
+import argparse as ap
+import json
 import logging
 import os
+import sys
 import time
+from uuid import uuid4
+
+import requests
+from executor import ExternalCommand, ExternalCommandFailed
 
 PROGRAM = "fastq-dl"
 VERSION = "1.1.0"
@@ -137,8 +144,6 @@ def execute(
     is_sra=False,
 ):
     """A simple wrapper around executor."""
-    from executor import ExternalCommand, ExternalCommandFailed
-
     attempt = 0
     while attempt < max_attempts:
         attempt += 1
@@ -179,8 +184,6 @@ def execute(
 
 def check_sratools():
     """Check whether the use has completed the interactive step for sra-toolkit."""
-    import uuid
-
     needs_setup = False
     HOME = execute(f"echo $HOME", capture_stdout=True).rstrip()
     NCBI_HOME = f"{HOME}/.ncbi"
@@ -203,7 +206,7 @@ def check_sratools():
             logging.info(f'\tUUID not found in "{NCBI_USER}", setting up.')
 
     if needs_setup:
-        uuid = str(uuid.uuid4())
+        uuid = str(uuid4())
         execute(f"touch {NCBI_USER}")
         with open(NCBI_USER, "a") as ncbi_fh:
             ncbi_fh.write(f'/LIBS/GUID = "{uuid}"\n')
@@ -367,8 +370,6 @@ def merge_runs(runs, output):
 
 def get_run_info(query):
     """Retreive a list of unprocessed samples avalible from ENA."""
-    import requests
-
     url = f'{ENA_URL}&query="{query}"&fields={",".join(FIELDS)}'
     headers = {"Content-type": "application/x-www-form-urlencoded"}
     r = requests.get(url, headers=headers)
@@ -389,7 +390,6 @@ def get_run_info(query):
 
 def write_json(data, output):
     """Write input data structure to a json file."""
-    import json
 
     with open(output, "w") as fh:
         json.dump(data, fh, indent=4, sort_keys=True)
@@ -442,9 +442,6 @@ def check_aspera(ascp, private_key, speed):
 
 
 if __name__ == "__main__":
-    import argparse as ap
-    import sys
-
     parser = ap.ArgumentParser(
         prog=PROGRAM,
         conflict_handler="resolve",
