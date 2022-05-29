@@ -53,7 +53,7 @@ import os
 import time
 
 PROGRAM = "fastq-dl"
-VERSION = "1.0.7"
+VERSION = "1.1.0"
 STDOUT = 11
 STDERR = 12
 ENA_FAILED = "ENA_NOT_FOUND"
