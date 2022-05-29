@@ -417,6 +417,7 @@ def main():
         choices=["sra", "ena"],
         type=str.lower,
         default="ena",
+        nargs="?",
         help=(
             "Specify which provider (ENA or SRA) to use. Accepted Values: ENA SRA "
             "[default: %(default)s]"
