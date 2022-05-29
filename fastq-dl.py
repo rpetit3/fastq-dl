@@ -442,7 +442,7 @@ def check_aspera(ascp, private_key, speed):
         return {"ascp": ascp, "private_key": private_key, "speed": speed}
 
 
-if __name__ == "__main__":
+def main():
     parser = ap.ArgumentParser(
         prog=PROGRAM,
         conflict_handler="resolve",
@@ -688,3 +688,7 @@ if __name__ == "__main__":
                 merge_runs(vals["r1"], f"{outdir}/{name}.fastq.gz")
         write_json(runs, f"{outdir}/{args.prefix}-run-mergers.json")
     write_json(ena_data, f"{outdir}/{args.prefix}-run-info.json")
+
+
+if __name__ == "__main__":
+    main()
