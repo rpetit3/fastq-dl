@@ -15,3 +15,4 @@ RUN micromamba install -y --freeze-installed -n base -f /tmp/env.yml \
     && find /opt/conda/ -follow -type f -name '*.js.map' -delete
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER fastq-dl.py /bin/fastq-dl
+ENV PATH "$MAMBA_ROOT_PREFIX/bin:$PATH"
