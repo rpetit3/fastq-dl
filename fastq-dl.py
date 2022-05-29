@@ -462,7 +462,9 @@ def main():
     )
     group1.add_argument(
         "provider",
-        choices=["sra", "SRA", "ena", "ENA"],
+        choices=["sra", "ena"],
+        type=str.lower,
+        default="ena",
         help="Specify which provider (ENA or SRA) to use. Accepted Values: ENA SRA",
     )
 
@@ -581,7 +583,7 @@ def main():
         else None
     )
     if not aspera:
-        if args.provider == "ENA":
+        if args.provider == "ena":
             logging.info("Aspera Connect not available, using FTP for ENA downloads")
         args.ftp_only = True
 
@@ -604,7 +606,7 @@ def main():
         run_acc = run_info["run_accession"]
         logging.info(f"\tWorking on run {run_acc}...")
         fastqs = None
-        if args.provider.lower() == "ena":
+        if args.provider == "ena":
             fastqs = ena_download(
                 run_info,
                 outdir,
