@@ -49,6 +49,7 @@ Example:
 fastq-dl SRX477044 SRA
 """
 import argparse as ap
+import hashlib
 import json
 import logging
 import os
@@ -66,6 +67,8 @@ STDOUT = 11
 STDERR = 12
 ENA_FAILED = "ENA_NOT_FOUND"
 SRA_FAILED = "SRA_NOT_FOUND"
+MB = 1_048_576
+BUFFER_SIZE = 10 * MB
 logging.addLevelName(STDOUT, "STDOUT")
 logging.addLevelName(STDERR, "STDERR")
 
@@ -298,14 +301,16 @@ def ena_download(run, outdir, aspera=None, max_attempts=10, ftp_only=False):
 
 
 def md5sum(fastq):
-    """Return the MD5SUM of an input file."""
+    """Return the MD5SUM of an input file.
+    Taken from https://stackoverflow.com/a/3431838/5299417
+    """
     if os.path.exists(fastq):
-        stdout = execute(f"md5sum {fastq}", capture_stdout=True)
-        if stdout:
-            md5sum, filename = stdout.split()
-            return md5sum
-        else:
-            return None
+        hash_md5 = hashlib.md5()
+        with open(fastq, "rb") as fp:
+            for chunk in iter(lambda: fp.read(BUFFER_SIZE), b""):
+                hash_md5.update(chunk)
+
+        return hash_md5.hexdigest()
     else:
         return None
 
