@@ -463,6 +463,7 @@ def main():
 
     group4 = parser.add_argument_group("Helpful Options")
     group4.add_argument(
+        "-o",
         "--outdir",
         metavar="OUTPUT_DIR",
         type=str,
