@@ -176,7 +176,7 @@ def sra_download(accession, outdir, cpus=1, max_attempts=10):
     pe = f"{outdir}/{accession}_2.fastq.gz"
 
     if not os.path.exists(se) and not os.path.exists(pe):
-        Path(outdir).mkdir(parents=True)
+        Path(outdir).mkdir(parents=True, exist_ok=True)
         outcome = execute(
             f"fasterq-dump {accession} --split-files --threads {cpus}",
             max_attempts=max_attempts,
@@ -273,7 +273,7 @@ def download_ena_fastq(fasp, ftp, outdir, md5, aspera, max_attempts=10, ftp_only
     fastq = f"{outdir}/{os.path.basename(fasp)}"
 
     if not os.path.exists(fastq):
-        Path(outdir).mkdir(parents=True)
+        Path(outdir).mkdir(parents=True, exist_ok=True)
 
         while not success:
             if ftp_only:
