@@ -1,0 +1,10 @@
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - pigz
+  - executor
+  - python >=3.6
+  - sra-tools >=2.9
+  - wget
+  - requests
