@@ -13,7 +13,7 @@ import requests
 from executor import ExternalCommand, ExternalCommandFailed
 
 PROGRAM = "fastq-dl"
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 STDOUT = 11
 STDERR = 12
 ENA_FAILED = "ENA_NOT_FOUND"
@@ -558,9 +558,15 @@ def main():
     logging.info(f"Query: {args.query}")
     logging.info(f"Archive: {args.provider}")
     logging.info(f"Total Runs To Download: {len(ena_data)}")
+    downloaded = {}
     runs = {} if args.group_by_experiment or args.group_by_sample else None
     for i, run_info in enumerate(ena_data):
         run_acc = run_info["run_accession"]
+        if run_acc not in downloaded:
+            downloaded[run_acc] = True
+        else:
+            logging.warning(f"Duplicate run {run_acc} found, skipping re-download...")
+            continue
         logging.info(f"\tWorking on run {run_acc}...")
         fastqs = None
         if args.provider == "ena":

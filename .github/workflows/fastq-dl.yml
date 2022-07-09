@@ -28,3 +28,6 @@ jobs:
       - name: Test SRA Download
         run: |
          fastq-dl.py SRX1390608 SRA --is_experiment --outdir test-sra --verbose
+      - name: Test Exeriment with duplicate runs
+        run: |
+         fastq-dl.py ERX012546 SRA --is_experiment --outdir test-duplicate --verbose
