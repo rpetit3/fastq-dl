@@ -277,7 +277,7 @@ def download_ena_fastq(fasp, ftp, outdir, md5, aspera, max_attempts=10, ftp_only
 
         while not success:
             if ftp_only:
-                logging.info(f"\t\tFTP download attempt {attempt + 1}")
+                logging.info(f"\t\t{os.path.basename(fasp)} FTP download attempt {attempt + 1}")
                 execute(
                     f"wget --quiet -O {fastq} ftp://{ftp}", max_attempts=max_attempts
                 )
