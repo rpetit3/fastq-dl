@@ -4,20 +4,23 @@ import hashlib
 import json
 import logging
 import os
+import re
 import sys
 import time
 from pathlib import Path
-from uuid import uuid4
 
 import requests
 from executor import ExternalCommand, ExternalCommandFailed
+from pysradb import SRAweb
 
 PROGRAM = "fastq-dl"
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 STDOUT = 11
 STDERR = 12
 ENA_FAILED = "ENA_NOT_FOUND"
 SRA_FAILED = "SRA_NOT_FOUND"
+SRA = "SRA"
+ENA = "ENA"
 MB = 1_048_576
 BUFFER_SIZE = 10 * MB
 logging.addLevelName(STDOUT, "STDOUT")
@@ -240,10 +243,10 @@ def download_ena_fastq(ftp, outdir, md5, max_attempts=10, ftp_only=False):
         Path(outdir).mkdir(parents=True, exist_ok=True)
 
         while not success:
-            logging.info(f"\t\t{os.path.basename(ftp)} FTP download attempt {attempt + 1}")
-            execute(
-                f"wget --quiet -O {fastq} ftp://{ftp}", max_attempts=max_attempts
+            logging.info(
+                f"\t\t{os.path.basename(ftp)} FTP download attempt {attempt + 1}"
             )
+            execute(f"wget --quiet -O {fastq} ftp://{ftp}", max_attempts=max_attempts)
 
             fastq_md5 = md5sum(fastq)
             if fastq_md5 != md5:
@@ -279,8 +282,18 @@ def merge_runs(runs, output):
         Path(runs[0]).rename(output)
 
 
-def get_run_info(query):
-    """Retreive a list of unprocessed samples avalible from ENA."""
+def get_sra_metadata(query: str):
+    # try fetch info from SRA
+    db = SRAweb()
+    df = db.search_sra(
+        query, detailed=True, sample_attribute=True, expand_sample_attributes=True
+    )
+    if df is None:
+        return [False, []]
+    return [True, df.to_dict(orient="records")]
+
+
+def get_ena_metadata(query: str):
     url = f'{ENA_URL}&query="{query}"&fields={",".join(FIELDS)}'
     headers = {"Content-type": "application/x-www-form-urlencoded"}
     r = requests.get(url, headers=headers)
@@ -297,6 +310,24 @@ def get_run_info(query):
         return [True, data]
     else:
         return [False, [r.status_code, r.text]]
+
+
+def get_run_info(query):
+    """Retreive a list of unprocessed samples avalible from ENA."""
+    logging.debug("Quering ENA for metadata...")
+    success, ena_data = get_ena_metadata(query)
+    if success:
+        return ENA, ena_data
+    else:
+        logging.debug("Failed to get metadata from ENA. Trying SRA...")
+        success, sra_data = get_sra_metadata(query.split("=")[1])
+        if not success:
+            logging.error("There was an issue querying ENA and SRA, exiting...")
+            logging.error(f"STATUS: {ena_data[0]}")
+            logging.error(f"TEXT: {ena_data[1]}")
+            sys.exit(1)
+        else:
+            return SRA, sra_data
 
 
 def write_json(data, output):
@@ -324,6 +355,23 @@ def parse_query(query, is_study, is_experiment, is_run):
             return f"study_accession={query}"
 
 
+def validate_query(s: str) -> str:
+    """Check that query is a valid experment, project, or run accession
+    https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html?highlight=accessions
+    """
+    project_re = re.compile(r"PRJ[EDN][A-Z][0-9]+")
+    study_re = re.compile(r"[EDS]RP[0-9]{6,}")
+    experiment_re = re.compile(r"[EDS]RX[0-9]{6,}")
+    run_re = re.compile(r"[EDS]RR[0-9]{6,}")
+    regexs = [run_re, experiment_re, study_re, project_re]
+    for rx in regexs:
+        if rx.match(s):
+            return s
+    raise argparse.ArgumentTypeError(
+        f"{s} is not a valid project/study/experiment/run accession. See https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html?highlight=accessions for valid options"
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog=PROGRAM,
@@ -334,7 +382,7 @@ def main():
     group1.add_argument(
         "query",
         metavar="ACCESSION",
-        type=str,
+        type=validate_query,
         help="ENA/SRA accession to query. (Study, Experiment, or " "Run accession)",
     )
     group1.add_argument(
@@ -381,6 +429,7 @@ def main():
         help="Prefix to use for naming log files [default: %(default)s]",
     )
     group4.add_argument(
+        "-a",
         "--max_attempts",
         metavar="INT",
         type=int,
@@ -413,7 +462,7 @@ def main():
         "--silent", action="store_true", help="Only critical errors will be printed."
     )
     group4.add_argument(
-        "--verbose", action="store_true", help="Print debug related text."
+        "-v", "--verbose", action="store_true", help="Print debug related text."
     )
     group4.add_argument(
         "--debug",
@@ -440,12 +489,7 @@ def main():
     query = parse_query(args.query, args.is_study, args.is_experiment, args.is_run)
 
     # Start Download Process
-    success, ena_data = get_run_info(query)
-    if not success:
-        logging.error("There was an issue querying ENA, exiting...")
-        logging.error(f"STATUS: {ena_data[0]}")
-        logging.error(f"TEXT: {ena_data[1]}")
-        sys.exit(1)
+    data_from, ena_data = get_run_info(query)
 
     logging.info(f"Query: {args.query}")
     logging.info(f"Archive: {args.provider}")
@@ -461,7 +505,7 @@ def main():
             continue
         logging.info(f"\tWorking on run {run_acc}...")
         fastqs = None
-        if args.provider == "ena":
+        if args.provider == "ena" and data_from == ENA:
             fastqs = ena_download(
                 run_info,
                 outdir,
@@ -497,8 +541,8 @@ def main():
                 max_attempts=args.max_attempts,
             )
             if fastqs == SRA_FAILED:
-                if args.sra_only or args.only_provider:
-                    logging.error(f"\t{run_acc} not found on SRA")
+                if args.sra_only or args.only_provider or data_from == SRA:
+                    logging.error(f"\t{run_acc} not found on SRA or ENA")
                     ena_data[i]["error"] = SRA_FAILED
                     fastqs = None
                 else:
