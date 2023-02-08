@@ -10,14 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install fastq-dl
-        run: conda create -y -n fastq-dl -c conda-forge -c bioconda fastq-dl
+        run: conda create -y -n fastq-dl -c conda-forge -c bioconda executor pigz 'python>=3.6' 'sra-tools>=3.0.1' requests wget
       - uses: actions/checkout@v2
         with:
           path: fastq-dl
       - name: Staging
         run: |
          echo "${CONDA}/envs/fastq-dl/bin" >> $GITHUB_PATH
-         echo "$GITHUB_WORKSPACE/fastq-dl" >> $GITHUB_PATH
       - name: Test fastq-dl
         run: |
          fastq-dl.py --version
@@ -28,6 +27,12 @@ jobs:
       - name: Test SRA Download
         run: |
          fastq-dl.py SRX1390608 SRA --is_experiment --outdir test-sra --verbose
-      - name: Test Exeriment with duplicate runs
+      - name: Test Experiment with duplicate runs
         run: |
          fastq-dl.py ERX012546 SRA --is_experiment --outdir test-duplicate --verbose
+      - name: Test Small Run (SRA)
+        run: |
+         fastq-dl.py SRX3606281 SRA --is_experiment --outdir test-small-sra --verbose
+      - name: Test Small Run (ENA)
+        run: |
+         fastq-dl.py SRX3606281 ENA --is_experiment --outdir test-small-ena --verbose

@@ -13,7 +13,7 @@ import requests
 from executor import ExternalCommand, ExternalCommandFailed
 
 PROGRAM = "fastq-dl"
-VERSION = "1.1.1"
+VERSION = "1.2.0"
 STDOUT = 11
 STDERR = 12
 ENA_FAILED = "ENA_NOT_FOUND"
@@ -137,40 +137,8 @@ def execute(
                 raise error
 
 
-def check_sratools():
-    """Check whether the use has completed the interactive step for sra-toolkit."""
-    needs_setup = False
-    home = Path(os.environ["HOME"])
-    ncbi_home = home / ".ncbi"
-    ncbi_user = ncbi_home / "user-settings.mkfg"
-    if not ncbi_home.exists():
-        logging.info(f'\tDirectory "{ncbi_home}" not found, setting up.')
-        ncbi_home.mkdir(parents=True)
-        needs_setup = True
-    elif not ncbi_user.exists():
-        logging.info(f'\tFile "{ncbi_user}" not found, setting up.')
-        needs_setup = True
-    else:
-        with open(ncbi_user, "rt") as ncbi_fh:
-            uuid_found = False
-            for line in ncbi_fh:
-                if "/LIBS/GUID" in line:
-                    uuid_found = True
-        if not uuid_found:
-            needs_setup = True
-            logging.info(f'\tUUID not found in "{ncbi_user}", setting up.')
-
-    if needs_setup:
-        uuid = str(uuid4())
-        ncbi_user.touch()
-        with open(ncbi_user, "a") as ncbi_fh:
-            ncbi_fh.write(f'/LIBS/GUID = "{uuid}"\n')
-        logging.info(f"\tAdded randomly generated UUID to {ncbi_user}")
-
-
 def sra_download(accession, outdir, cpus=1, max_attempts=10):
     """Download FASTQs from SRA using fasterq-dump."""
-    check_sratools()
     fastqs = {"r1": "", "r2": "", "single_end": True}
     se = f"{outdir}/{accession}.fastq.gz"
     pe = f"{outdir}/{accession}_2.fastq.gz"
