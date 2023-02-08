@@ -47,3 +47,9 @@ jobs:
       - name: Test Small Run (ENA)
         run: |
          fastq-dl.py --accession SRX3606281 --outdir test-small-ena --verbose
+      - name: Test BioSample (ENA)
+        run: |
+         fastq-dl.py --accession SAMN06191622 --outdir test-biosample --verbose
+      - name: Test Sample (SRA)
+        run: |
+         fastq-dl.py --accession SRS1904245 --provider SRA --outdir test-sample --verbose
