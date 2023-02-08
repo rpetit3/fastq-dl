@@ -14,7 +14,7 @@ from executor import ExternalCommand, ExternalCommandFailed
 from pysradb import SRAweb
 
 PROGRAM = "fastq-dl"
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 STDOUT = 11
 STDERR = 12
 ENA_FAILED = "ENA_NOT_FOUND"
