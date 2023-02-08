@@ -1,12 +1,16 @@
-image: condaforge/mambaforge:22.9.0-2
+image: condaforge/mambaforge:22.9.0-3
 
 tasks:
   - name: Initialize
     init: |
       . /opt/conda/etc/profile.d/conda.sh
-      mamba activate base
+      conda activate base
       mamba env create --name fastq-dl --file /workspace/fastq-dl/environment.yml
-      mamba activate fastq-dl
+      conda activate fastq-dl
+      mkdir -p .vscode
+      echo '{"python.pythonPath": "/home/gitpod/.conda/envs/fastq-dl/bin/python"}' > .vscode/settings.json
+    command: |
+
 vscode:
   extensions:
     - codezombiech.gitignore                 # Language support for .gitignore files
@@ -20,3 +24,4 @@ vscode:
     - ms-python.black-formatter              # Support for Python Black formatter
     - njpwerner.autodocstring                # Use type hints to auto create doc strings
     - github.copilot                         # Load up Copilot
+    - ms-python.python                       # Syntax and linting
