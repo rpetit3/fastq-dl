@@ -1,9 +1,7 @@
 #! /usr/bin/env python3
-import argparse
 import hashlib
 import json
 import logging
-import os
 import re
 import sys
 import time
@@ -13,6 +11,34 @@ import requests
 from executor import ExternalCommand, ExternalCommandFailed
 from pysradb import SRAweb
 
+from rich import print
+from rich.console import Console
+from rich.logging import RichHandler
+import rich_click as click
+click.rich_click.USE_RICH_MARKUP = True
+click.rich_click.OPTION_GROUPS = {
+    "fastq-dl": [
+        {
+            "name": "Required Options",
+            "options": ["--query", "--provider"],
+        },
+        {
+            "name": "Additional Options",
+            "options": [
+                "--group_by_experiment",
+                "--group_by_sample",
+                "--outdir",
+                "--prefix",
+                "--cpus",
+                "--max_attempts",
+                "--only-provider",
+                "--silent",
+                "--debug",
+            ],
+        },
+    ]
+}
+
 PROGRAM = "fastq-dl"
 VERSION = "1.3.0"
 STDOUT = 11
@@ -21,8 +47,7 @@ ENA_FAILED = "ENA_NOT_FOUND"
 SRA_FAILED = "SRA_NOT_FOUND"
 SRA = "SRA"
 ENA = "ENA"
-MB = 1_048_576
-BUFFER_SIZE = 10 * MB
+
 logging.addLevelName(STDOUT, "STDOUT")
 logging.addLevelName(STDERR, "STDERR")
 
@@ -93,15 +118,31 @@ def get_log_level():
 
 
 def execute(
-    cmd,
-    directory=os.getcwd(),
-    capture_stdout=False,
-    stdout_file=None,
-    stderr_file=None,
-    max_attempts=1,
-    is_sra=False,
-):
-    """A simple wrapper around executor."""
+    cmd: str,
+    directory: str = str(Path.cwd()),
+    capture_stdout: bool = False,
+    stdout_file: str = None,
+    stderr_file: str = None,
+    max_attempts: int = 1,
+    is_sra: bool = False,
+) -> str:
+    """A simple wrapper around executor.
+
+    Args:
+        cmd (str): A command to execute.
+        directory (str, optional): Set the working directory for command. Defaults to str(Path.cwd()).
+        capture_stdout (bool, optional): Capture and return the STDOUT of a command. Defaults to False.
+        stdout_file (str, optional): File to write STDOUT to. Defaults to None.
+        stderr_file (str, optional): File to write STDERR to. Defaults to None.
+        max_attempts (int, optional): Maximum times to attempt command execution. Defaults to 1.
+        is_sra (bool, optional): The command is from SRA. Defaults to False.
+
+    Raises:
+        error: An unexpected error occurred.
+
+    Returns:
+        str: Exit code, accepted error message, or STDOUT of command.
+    """
     attempt = 0
     while attempt < max_attempts:
         attempt += 1
@@ -140,13 +181,25 @@ def execute(
                 raise error
 
 
-def sra_download(accession, outdir, cpus=1, max_attempts=10):
-    """Download FASTQs from SRA using fasterq-dump."""
+def sra_download(
+    accession: str, outdir: str, cpus: int = 1, max_attempts: int = 10
+) -> dict:
+    """Download FASTQs from SRA using fasterq-dump.
+
+    Args:
+        accession (str): The accession to download associated FASTQs.
+        outdir (str): Directory to write FASTQs to.
+        cpus (int, optional): Number of CPUs to use. Defaults to 1.
+        max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.
+
+    Returns:
+        dict: A dictionary of the FASTQs and their paired status.
+    """
     fastqs = {"r1": "", "r2": "", "single_end": True}
     se = f"{outdir}/{accession}.fastq.gz"
     pe = f"{outdir}/{accession}_2.fastq.gz"
 
-    if not os.path.exists(se) and not os.path.exists(pe):
+    if not Path(se).exists() and not Path(pe).exists():
         Path(outdir).mkdir(parents=True, exist_ok=True)
         outcome = execute(
             f"fasterq-dump {accession} --split-files --threads {cpus}",
@@ -159,7 +212,7 @@ def sra_download(accession, outdir, cpus=1, max_attempts=10):
         else:
             execute(f"pigz --force -p {cpus} -n {accession}*.fastq", directory=outdir)
 
-    if os.path.exists(f"{outdir}/{accession}_2.fastq.gz"):
+    if Path(f"{outdir}/{accession}_2.fastq.gz").exists():
         # Paired end
         fastqs["r1"] = f"{outdir}/{accession}_1.fastq.gz"
         fastqs["r2"] = f"{outdir}/{accession}_2.fastq.gz"
@@ -170,7 +223,17 @@ def sra_download(accession, outdir, cpus=1, max_attempts=10):
     return fastqs
 
 
-def ena_download(run, outdir, max_attempts=10, ftp_only=False):
+def ena_download(run: str, outdir: str, max_attempts: int = 10) -> dict:
+    """Download FASTQs from ENA FTP using wget.
+
+    Args:
+        accession (str): The accession to download associated FASTQs.
+        outdir (str): Directory to write FASTQs to.
+        max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.
+
+    Returns:
+        dict: A dictionary of the FASTQs and their paired status.
+    """
     fastqs = {"r1": "", "r2": "", "single_end": True}
     ftp = run["fastq_ftp"]
     if not ftp:
@@ -194,7 +257,7 @@ def ena_download(run, outdir, max_attempts=10, ftp_only=False):
                 # Example: ERR1143237.fastq.gz
                 # Not a part of the paired end read, so skip this file. Or,
                 # its the only fastq file, and its not a paired
-                obs_fq = os.path.basename(ftp[i])
+                obs_fq = Path(ftp[i]).name
                 exp_fq = f'{run["run_accession"]}.fastq.gz'
                 if len(ftp) != 1 and obs_fq != exp_fq:
                     continue
@@ -206,7 +269,6 @@ def ena_download(run, outdir, max_attempts=10, ftp_only=False):
                 outdir,
                 md5[i],
                 max_attempts=max_attempts,
-                ftp_only=ftp_only,
             )
 
             if is_r2:
@@ -218,11 +280,20 @@ def ena_download(run, outdir, max_attempts=10, ftp_only=False):
     return fastqs
 
 
-def md5sum(fastq):
-    """Return the MD5SUM of an input file.
-    Taken from https://stackoverflow.com/a/3431838/5299417
+def md5sum(fastq: str) -> str:
+    """Calculate the MD5 checksum of a file.
+
+    Source: https://stackoverflow.com/a/3431838/5299417
+
+    Args:
+        fastq (str): Input FASTQ to calculate MD5 checksum for.
+
+    Returns:
+        str: Calculated MD5 checksum.
     """
-    if os.path.exists(fastq):
+    MB = 1_048_576
+    BUFFER_SIZE = 10 * MB
+    if Path(fastq).exists():
         hash_md5 = hashlib.md5()
         with open(fastq, "rb") as fp:
             for chunk in iter(lambda: fp.read(BUFFER_SIZE), b""):
@@ -233,37 +304,48 @@ def md5sum(fastq):
         return None
 
 
-def download_ena_fastq(ftp, outdir, md5, max_attempts=10, ftp_only=False):
-    """Download FASTQs from ENA using Apera Connect or FTP."""
+def download_ena_fastq(
+    ftp: str,
+    outdir: str,
+    md5: str,
+    max_attempts: int = 10,
+) -> str:
+    """Download FASTQs from ENA using FTP.
+
+    Args:
+        ftp (str): The FTP address of the FASTQ file.
+        outdir (str): Directory to download the FASTQ to.
+        md5 (str): Expected MD5 checksum of the FASTQ.
+        max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.
+
+    Returns:
+        str: Path to the downloaded FASTQ.
+    """
     success = False
     attempt = 0
-    fastq = f"{outdir}/{os.path.basename(ftp)}"
+    fastq = f"{outdir}/{Path(ftp).name}"
 
-    if not os.path.exists(fastq):
+    if not Path(fastq).exists():
         Path(outdir).mkdir(parents=True, exist_ok=True)
 
         while not success:
-            logging.info(
-                f"\t\t{os.path.basename(ftp)} FTP download attempt {attempt + 1}"
-            )
+            logging.info(f"\t\t{Path(ftp).name} FTP download attempt {attempt + 1}")
             execute(f"wget --quiet -O {fastq} ftp://{ftp}", max_attempts=max_attempts)
 
             fastq_md5 = md5sum(fastq)
             if fastq_md5 != md5:
                 logging.log(STDOUT, f"MD5s, Observed: {fastq_md5}, Expected: {md5}")
                 attempt += 1
-                if os.path.exists(fastq):
-                    os.remove(fastq)
+                if Path(fastq).exists():
+                    Path(fastq).unlink()
                 if attempt > max_attempts:
-                    if not ftp_only:
-                        ftp_only = True
-                        attempt = 0
-                    else:
-                        logging.error(
-                            f"Download failed after {max_attempts} attempts. "
-                            "Please try again later or manually from SRA/ENA."
-                        )
-                        sys.exit(1)
+                    logging.error(
+                        f"Download failed after {max_attempts} attempts. "
+                        "Please try again later or manually from SRA/ENA."
+                    )
+                    sys.exit(1)
+
+                # Hiccup? Wait a bit before trying again.
                 time.sleep(10)
             else:
                 success = True
@@ -271,8 +353,13 @@ def download_ena_fastq(ftp, outdir, md5, max_attempts=10, ftp_only=False):
     return fastq
 
 
-def merge_runs(runs, output):
-    """Merge runs from an experiment."""
+def merge_runs(runs: list, output: str) -> None:
+    """Merge runs from an experiment or sample.
+
+    Args:
+        runs (list): A list of FASTQs to merge.
+        output (str): The final merged FASTQ.
+    """
     if len(runs) > 1:
         run_fqs = " ".join(runs)
         execute(f"cat {run_fqs} > {output}")
@@ -282,8 +369,16 @@ def merge_runs(runs, output):
         Path(runs[0]).rename(output)
 
 
-def get_sra_metadata(query: str):
-    # try fetch info from SRA
+def get_sra_metadata(query: str) -> list:
+    """Fetch metadata from SRA.
+
+    Args:
+        query (str): The accession to search for.
+
+    Returns:
+        list: Records associated with the accession.
+    """
+    #
     db = SRAweb()
     df = db.search_sra(
         query, detailed=True, sample_attribute=True, expand_sample_attributes=True
@@ -293,7 +388,15 @@ def get_sra_metadata(query: str):
     return [True, df.to_dict(orient="records")]
 
 
-def get_ena_metadata(query: str):
+def get_ena_metadata(query: str) -> list:
+    """Fetch metadata from ENA.
+
+    Args:
+        query (str): The query to search for.
+
+    Returns:
+        list: Records associated with the accession.
+    """
     url = f'{ENA_URL}&query="{query}"&fields={",".join(FIELDS)}'
     headers = {"Content-type": "application/x-www-form-urlencoded"}
     r = requests.get(url, headers=headers)
@@ -312,15 +415,27 @@ def get_ena_metadata(query: str):
         return [False, [r.status_code, r.text]]
 
 
-def get_run_info(query):
-    """Retreive a list of unprocessed samples avalible from ENA."""
-    logging.debug("Quering ENA for metadata...")
+def get_run_info(accession: str, query: str) -> tuple:
+    """Retrieve a list of samples available from ENA.
+
+    The first attempt will be against ENA, and if that fails, SRA will be queried. This should
+    capture those samples not yet synced between ENA and SRA.
+
+    Args:
+        accession (str): The accession to search for.
+        query (str): A formatted query for ENA searches.
+
+    Returns:
+        tuple: Records associated with the accession.
+    """
+
+    logging.debug("Querying ENA for metadata...")
     success, ena_data = get_ena_metadata(query)
     if success:
         return ENA, ena_data
     else:
         logging.debug("Failed to get metadata from ENA. Trying SRA...")
-        success, sra_data = get_sra_metadata(query.split("=")[1])
+        success, sra_data = get_sra_metadata(accession)
         if not success:
             logging.error("There was an issue querying ENA and SRA, exiting...")
             logging.error(f"STATUS: {ena_data[0]}")
@@ -330,172 +445,132 @@ def get_run_info(query):
             return SRA, sra_data
 
 
-def write_json(data, output):
-    """Write input data structure to a json file."""
+def write_json(data: dict, output: str) -> None:
+    """Write a JSON file.
 
+    Args:
+        data (dict): Data to be written to JSON.
+        output (str): File to write the JSON to.
+    """
     with open(output, "w") as fh:
         json.dump(data, fh, indent=4, sort_keys=True)
 
 
-def parse_query(query, is_study, is_experiment, is_run):
-    """Parse user query, to determine search field value."""
-    if is_study:
-        return f"study_accession={query}"
-    elif is_experiment:
+def validate_query(query: str) -> str:
+    """
+    Check that query is an accepted accession type and return the accession type. Current
+    accepted types are:
+
+        Projects - PRJEB, PRJNA, PRJDA
+        Studies - ERP, DRP, SRP
+        BioSamples - SAMD, SAME, SAMN
+        Samples - ERS, DRS, SRS
+        Experiments - ERX, DRX, SRX
+        Runs - ERR, DRR, SRR
+
+    Parameters:
+        query (str): A string containing an accession.
+
+    Returns:
+        str: A string containing the query for ENA search.
+
+    https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html
+    """
+    if re.match(r"PRJ[EDN][A-Z][0-9]+|[EDS]RP[0-9]{6,}", query):
+        # Is a project or study accession
+        return f"(study_accession={query} OR secondary_study_accession={query})"
+    elif re.match(r"SAM[EDN][A-Z]?[0-9]+|[EDS]RS[0-9]{6,}", query):
+        # Is a sample or biosample accession
+        return f"(sample_accession={query} OR secondary_sample_accession={query})"
+    elif re.match(r"[EDS]RX[0-9]{6,}", query):
+        # Is an experiment accession
         return f"experiment_accession={query}"
-    elif is_run:
+    elif re.match(r"[EDS]RR[0-9]{6,}", query):
+        # Is a run accession
         return f"run_accession={query}"
     else:
-        # Try to guess...
-        if query[1:3] == "RR":
-            return f"run_accession={query}"
-        elif query[1:3] == "RX":
-            return f"experiment_accession={query}"
-        else:
-            return f"study_accession={query}"
+        logging.error(
+            f"{query} is not a Study, Sample, Experiment, or Run accession. See https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html for valid options",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
-def validate_query(s: str) -> str:
-    """Check that query is a valid experment, project, or run accession
-    https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html?highlight=accessions
-    """
-    project_re = re.compile(r"PRJ[EDN][A-Z][0-9]+")
-    study_re = re.compile(r"[EDS]RP[0-9]{6,}")
-    experiment_re = re.compile(r"[EDS]RX[0-9]{6,}")
-    run_re = re.compile(r"[EDS]RR[0-9]{6,}")
-    regexs = [run_re, experiment_re, study_re, project_re]
-    for rx in regexs:
-        if rx.match(s):
-            return s
-    raise argparse.ArgumentTypeError(
-        f"{s} is not a valid project/study/experiment/run accession. See https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html?highlight=accessions for valid options"
-    )
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        prog=PROGRAM,
-        conflict_handler="resolve",
-        description=f"{PROGRAM} (v{VERSION}) - Download FASTQs from ENA or SRA",
-    )
-    group1 = parser.add_argument_group("Required Options", "")
-    group1.add_argument(
-        "query",
-        metavar="ACCESSION",
-        type=validate_query,
-        help="ENA/SRA accession to query. (Study, Experiment, or " "Run accession)",
-    )
-    group1.add_argument(
-        "provider",
-        choices=["sra", "ena"],
-        type=str.lower,
-        default="ena",
-        nargs="?",
-        help=(
-            "Specify which provider (ENA or SRA) to use. Accepted Values: ENA SRA "
-            "[default: %(default)s]"
-        ),
-    )
-
-    group3 = parser.add_argument_group("Query Related Options")
-    group3.add_argument("--is_study", action="store_true", help="Query is a Study.")
-    group3.add_argument(
-        "--is_experiment", action="store_true", help="Query is an Experiment."
-    )
-    group3.add_argument("--is_run", action="store_true", help="Query is a Run.")
-    group3.add_argument(
-        "--group_by_experiment",
-        action="store_true",
-        help="Group Runs by experiment accession.",
-    )
-    group3.add_argument(
-        "--group_by_sample", action="store_true", help="Group Runs by sample accession."
-    )
-
-    group4 = parser.add_argument_group("Helpful Options")
-    group4.add_argument(
-        "-o",
-        "--outdir",
-        metavar="OUTPUT_DIR",
-        type=str,
-        default="./",
-        help="Directory to output downloads to. [default: %(default)s]",
-    )
-    group4.add_argument(
-        "--prefix",
-        metavar="PREFIX",
-        type=str,
-        default="fastq",
-        help="Prefix to use for naming log files [default: %(default)s]",
-    )
-    group4.add_argument(
-        "-a",
-        "--max_attempts",
-        metavar="INT",
-        type=int,
-        default=10,
-        help="Maximum number of download attempts [default: %(default)d]",
-    )
-    group4.add_argument(
-        "--cpus",
-        metavar="INT",
-        type=int,
-        default=1,
-        help="Total cpus used for downloading from SRA [default: %(default)d]",
-    )
-    group4.add_argument("--ftp_only", action="store_true", help="FTP only downloads.")
-    group4.add_argument(
-        "--sra_only",
-        action="store_true",
-        help=(
-            "Do not attempt to fall back on ENA if SRA download does not work "
-            "(e.g. missing FASTQ). [DEPRECATED - use --only-provider/-F]"
-        ),
-    )
-    group4.add_argument(
-        "-F",
-        "--only-provider",
-        action="store_true",
-        help="Only attempt download from specified provider",
-    )
-    group4.add_argument(
-        "--silent", action="store_true", help="Only critical errors will be printed."
-    )
-    group4.add_argument(
-        "-v", "--verbose", action="store_true", help="Print debug related text."
-    )
-    group4.add_argument(
-        "--debug",
-        action="store_true",
-        help="Skip downloads, print what will be downloaded.",
-    )
-    group4.add_argument("--version", action="version", version=f"{PROGRAM} {VERSION}")
-
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(0)
-
-    args = parser.parse_args()
-
+@click.command()
+@click.version_option(VERSION)
+@click.option(
+    "--accession",
+    required=True,
+    help="ENA/SRA accession to query. (Study, Sample, Experiment, Run accession)",
+)
+@click.option(
+    "--provider",
+    default="ena",
+    show_default=True,
+    help="Specify which provider (ENA or SRA) to use.",
+    type=click.Choice(["ena", "sra"], case_sensitive=False,),
+    
+)
+@click.option(
+    "--group_by_experiment", is_flag=True, help="Group Runs by experiment accession."
+)
+@click.option("--group_by_sample", is_flag=True, help="Group Runs by sample accession.")
+@click.option(
+    "--outdir",
+    "-o",
+    default="./",
+    show_default=True,
+    help="Directory to output downloads to.",
+)
+@click.option(
+    "--prefix",
+    default="fastq",
+    show_default=True,
+    help="Prefix to use for naming log files.",
+)
+@click.option(
+    "--max_attempts",
+    "-a",
+    default=10,
+    show_default=True,
+    help="Maximum number of download attempts.",
+)
+@click.option(
+    "-F",
+    "--only-provider",
+    is_flag=True,
+    help="Only attempt download from specified provider.",
+)
+@click.option(
+    "--cpus",
+    default=1,
+    show_default=True,
+    help="Total cpus used for downloading from SRA.",
+)
+@click.option("--silent", is_flag=True, help="Only critical errors will be printed.")
+@click.option("--verbose", "-v", is_flag=True, help="Print debug related text.")
+@click.option(
+    "--debug", is_flag=True, help="Skip downloads, print what will be downloaded."
+)
+def fastqdl(accession, provider, group_by_experiment, group_by_sample, outdir, prefix, max_attempts, only_provider, cpus, silent, verbose, debug):
+    """Download FASTQ files from ENA or SRA."""
     # Setup logs
-    FORMAT = "%(asctime)s:%(name)s:%(levelname)s - %(message)s"
     logging.basicConfig(
-        format=FORMAT,
+        format="%(asctime)s:%(name)s:%(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[RichHandler(rich_tracebacks=True)]
     )
-    logging.getLogger().setLevel(set_log_level(args.silent, args.verbose))
-
-    outdir = os.getcwd() if args.outdir == "./" else f"{args.outdir}"
-    query = parse_query(args.query, args.is_study, args.is_experiment, args.is_run)
-
+    logging.getLogger().setLevel(set_log_level(silent, verbose))
     # Start Download Process
-    data_from, ena_data = get_run_info(query)
+    query = validate_query(accession)
+    data_from, ena_data = get_run_info(accession, query)
 
-    logging.info(f"Query: {args.query}")
-    logging.info(f"Archive: {args.provider}")
+    logging.info(f"Query: {accession}")
+    logging.info(f"Archive: {provider}")
     logging.info(f"Total Runs To Download: {len(ena_data)}")
     downloaded = {}
-    runs = {} if args.group_by_experiment or args.group_by_sample else None
+    runs = {} if group_by_experiment or group_by_sample else None
+    outdir = Path.cwd() if outdir == "./" else f"{outdir}"
     for i, run_info in enumerate(ena_data):
         run_acc = run_info["run_accession"]
         if run_acc not in downloaded:
@@ -505,16 +580,15 @@ def main():
             continue
         logging.info(f"\tWorking on run {run_acc}...")
         fastqs = None
-        if args.provider == "ena" and data_from == ENA:
+        if provider == "ena" and data_from == ENA:
             fastqs = ena_download(
                 run_info,
                 outdir,
-                max_attempts=args.max_attempts,
-                ftp_only=args.ftp_only,
+                max_attempts=max_attempts,
             )
 
             if fastqs == ENA_FAILED:
-                if args.only_provider:
+                if only_provider:
                     logging.error(f"\tNo fastqs found in ENA for {run_acc}")
                     ena_data[i]["error"] = ENA_FAILED
                     fastqs = None
@@ -525,8 +599,8 @@ def main():
                     fastqs = sra_download(
                         run_acc,
                         outdir,
-                        cpus=args.cpus,
-                        max_attempts=args.max_attempts,
+                        cpus=cpus,
+                        max_attempts=max_attempts,
                     )
                     if fastqs == SRA_FAILED:
                         logging.error(f"\t{run_acc} not found on SRA")
@@ -537,11 +611,11 @@ def main():
             fastqs = sra_download(
                 run_acc,
                 outdir,
-                cpus=args.cpus,
-                max_attempts=args.max_attempts,
+                cpus=cpus,
+                max_attempts=max_attempts,
             )
             if fastqs == SRA_FAILED:
-                if args.sra_only or args.only_provider or data_from == SRA:
+                if only_provider or data_from == SRA:
                     logging.error(f"\t{run_acc} not found on SRA or ENA")
                     ena_data[i]["error"] = SRA_FAILED
                     fastqs = None
@@ -551,8 +625,7 @@ def main():
                     fastqs = ena_download(
                         run_info,
                         outdir,
-                        max_attempts=args.max_attempts,
-                        ftp_only=args.ftp_only,
+                        max_attempts=max_attempts,
                     )
                     if fastqs == ENA_FAILED:
                         logging.error(f"\tNo fastqs found in ENA for {run_acc}")
@@ -561,9 +634,9 @@ def main():
 
         # Add the download results
         if fastqs:
-            if args.group_by_experiment or args.group_by_sample:
+            if group_by_experiment or group_by_sample:
                 name = run_info["sample_accession"]
-                if args.group_by_experiment:
+                if group_by_experiment:
                     name = run_info["experiment_accession"]
 
                 if name not in runs:
@@ -576,7 +649,7 @@ def main():
                     runs[name]["r2"].append(fastqs["r2"])
 
     # If applicable, merge runs
-    if runs and not args.debug:
+    if runs and not debug:
         for name, vals in runs.items():
             if len(vals["r1"]) and len(vals["r2"]):
                 # Not all runs labled as paired are actually paired.
@@ -590,9 +663,12 @@ def main():
             else:
                 logging.info("\tMerging single end runs to experiment...")
                 merge_runs(vals["r1"], f"{outdir}/{name}.fastq.gz")
-        write_json(runs, f"{outdir}/{args.prefix}-run-mergers.json")
-    write_json(ena_data, f"{outdir}/{args.prefix}-run-info.json")
+        write_json(runs, f"{outdir}/{prefix}-run-mergers.json")
+    write_json(ena_data, f"{outdir}/{prefix}-run-info.json")
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 1:
+        fastqdl.main(["--help"])
+    else:
+        fastqdl()

@@ -2,10 +2,11 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - pigz
   - executor
+  - pigz
+  - pysradb >=1.0
   - python >=3.6
+  - requests
+  - rich-click
   - sra-tools >=3.0.1
   - wget
-  - requests
-  - pysradb >=1.0

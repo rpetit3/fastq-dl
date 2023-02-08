@@ -34,16 +34,16 @@ jobs:
          fastq-dl.py --help
       - name: Test ENA Download
         run: |
-         fastq-dl.py SRX1390608 ENA --is_experiment --outdir test-ena --verbose
+         fastq-dl.py --accession SRX1390608 --outdir test-ena --verbose
       - name: Test SRA Download
         run: |
-         fastq-dl.py SRX1390608 SRA --is_experiment --outdir test-sra --verbose
+         fastq-dl.py --accession SRX1390608 --provider SRA --outdir test-sra --verbose
       - name: Test Experiment with duplicate runs
         run: |
-         fastq-dl.py ERX012546 SRA --is_experiment --outdir test-duplicate --verbose
+         fastq-dl.py --accession ERX012546 --provider sra --outdir test-duplicate --verbose
       - name: Test Small Run (SRA)
         run: |
-         fastq-dl.py SRX3606281 SRA --is_experiment --outdir test-small-sra --verbose
+         fastq-dl.py --accession SRX3606281 --provider SrA --outdir test-small-sra --verbose
       - name: Test Small Run (ENA)
         run: |
-         fastq-dl.py SRX3606281 ENA --is_experiment --outdir test-small-ena --verbose
+         fastq-dl.py --accession SRX3606281 --outdir test-small-ena --verbose
