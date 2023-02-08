@@ -27,22 +27,24 @@ fastq-dl --help
 
  Download FASTQ files from ENA or SRA.
 
-╭─ Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│    --version                             Show the version and exit.                                                                           │
-│ *  --accession                TEXT       ENA/SRA accession to query. (Study, Sample, Experiment, Run accession) [required]                    │
-│    --provider                 [ena|sra]  Specify which provider (ENA or SRA) to use. [default: ena]                                           │
-│    --group_by_experiment                 Group Runs by experiment accession.                                                                  │
-│    --group_by_sample                     Group Runs by sample accession.                                                                      │
-│    --outdir               -o  TEXT       Directory to output downloads to. [default: ./]                                                      │
-│    --prefix                   TEXT       Prefix to use for naming log files. [default: fastq]                                                 │
-│    --max_attempts         -a  INTEGER    Maximum number of download attempts. [default: 10]                                                   │
-│    --only-provider        -F             Only attempt download from specified provider.                                                       │
-│    --cpus                     INTEGER    Total cpus used for downloading from SRA. [default: 1]                                               │
-│    --silent                              Only critical errors will be printed.                                                                │
-│    --verbose              -v             Print debug related text.                                                                            │
-│    --debug                               Skip downloads, print what will be downloaded.                                                       │
-│    --help                                Show this message and exit.                                                                          │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────╮
+│    --version                             Show the version and exit.                                  │
+│ *  --accession                TEXT       ENA/SRA accession to query. (Study, Sample, Experiment, Run │
+│                                          accession)                                                  │
+│                                          [required]                                                  │
+│    --provider                 [ena|sra]  Specify which provider (ENA or SRA) to use. [default: ena]  │
+│    --group_by_experiment                 Group Runs by experiment accession.                         │
+│    --group_by_sample                     Group Runs by sample accession.                             │
+│    --outdir               -o  TEXT       Directory to output downloads to. [default: ./]             │
+│    --prefix                   TEXT       Prefix to use for naming log files. [default: fastq]        │
+│    --max_attempts         -a  INTEGER    Maximum number of download attempts. [default: 10]          │
+│    --only-provider        -F             Only attempt download from specified provider.              │
+│    --cpus                     INTEGER    Total cpus used for downloading from SRA. [default: 1]      │
+│    --silent                              Only critical errors will be printed.                       │
+│    --verbose              -v             Print debug related text.                                   │
+│    --debug                               Skip downloads, print what will be downloaded.              │
+│    --help                                Show this message and exit.                                 │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ### Example Usage
