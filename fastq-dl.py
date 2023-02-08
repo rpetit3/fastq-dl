@@ -40,7 +40,7 @@ click.rich_click.OPTION_GROUPS = {
 }
 
 PROGRAM = "fastq-dl"
-VERSION = "1.3.0"
+VERSION = "2.0.0"
 STDOUT = 11
 STDERR = 12
 ENA_FAILED = "ENA_NOT_FOUND"
