@@ -22,7 +22,7 @@ jobs:
           channels: conda-forge,bioconda,defaults
           channel-priority: strict
           activate-environment: fastq-dl
-          environment-file: fastq-dl/environment.yml
+          environment-file: environment.yml
           auto-update-conda: true
 
       - name: Test fastq-dl
