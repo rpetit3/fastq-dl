@@ -8,3 +8,4 @@ dependencies:
   - sra-tools >=3.0.1
   - wget
   - requests
+  - pysradb >=1.0
