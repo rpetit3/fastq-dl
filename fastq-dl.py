@@ -167,45 +167,41 @@ def sra_download(accession, outdir, cpus=1, max_attempts=10):
     return fastqs
 
 
-def ena_download(run, outdir, aspera=None, max_attempts=10, ftp_only=False):
+def ena_download(run, outdir, max_attempts=10, ftp_only=False):
     fastqs = {"r1": "", "r2": "", "single_end": True}
-    fasp = run["fastq_aspera"]
     ftp = run["fastq_ftp"]
-    if not ftp and not fasp:
+    if not ftp:
         return ENA_FAILED
 
-    fasp = fasp.split(";")
     ftp = ftp.split(";")
     md5 = run["fastq_md5"].split(";")
-    for i in range(len(fasp)):
+    for i in range(len(ftp)):
         is_r2 = False
         # If run is paired only include *_1.fastq and *_2.fastq, rarely a
         # run can have 3 files.
         # Example:ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR114/007/ERR1143237
         if run["library_layout"] == "PAIRED":
-            if fasp[i].endswith("_2.fastq.gz"):
+            if ftp[i].endswith("_2.fastq.gz"):
                 # Example: ERR1143237_2.fastq.gz
                 is_r2 = True
-            elif fasp[i].endswith("_1.fastq.gz"):
+            elif ftp[i].endswith("_1.fastq.gz"):
                 # Example: ERR1143237_1.fastq.gz
                 pass
             else:
                 # Example: ERR1143237.fastq.gz
                 # Not a part of the paired end read, so skip this file. Or,
                 # its the only fastq file, and its not a paired
-                obs_fq = os.path.basename(fasp[i])
+                obs_fq = os.path.basename(ftp[i])
                 exp_fq = f'{run["run_accession"]}.fastq.gz'
-                if len(fasp) != 1 and obs_fq != exp_fq:
+                if len(ftp) != 1 and obs_fq != exp_fq:
                     continue
 
         # Download Run
         if md5[i]:
             fastq = download_ena_fastq(
-                fasp[i],
                 ftp[i],
                 outdir,
                 md5[i],
-                aspera,
                 max_attempts=max_attempts,
                 ftp_only=ftp_only,
             )
@@ -234,31 +230,20 @@ def md5sum(fastq):
         return None
 
 
-def download_ena_fastq(fasp, ftp, outdir, md5, aspera, max_attempts=10, ftp_only=False):
+def download_ena_fastq(ftp, outdir, md5, max_attempts=10, ftp_only=False):
     """Download FASTQs from ENA using Apera Connect or FTP."""
     success = False
     attempt = 0
-    fastq = f"{outdir}/{os.path.basename(fasp)}"
+    fastq = f"{outdir}/{os.path.basename(ftp)}"
 
     if not os.path.exists(fastq):
         Path(outdir).mkdir(parents=True, exist_ok=True)
 
         while not success:
-            if ftp_only:
-                logging.info(f"\t\t{os.path.basename(fasp)} FTP download attempt {attempt + 1}")
-                execute(
-                    f"wget --quiet -O {fastq} ftp://{ftp}", max_attempts=max_attempts
-                )
-            else:
-                logging.info(f"\t\tAspera Connect download attempt {attempt + 1}")
-                execute(
-                    (
-                        f'{aspera["ascp"]} -QT -l {aspera["speed"]} -P33001 '
-                        f'-i {aspera["private_key"]} era-fasp@{fasp} ./'
-                    ),
-                    directory=outdir,
-                    max_attempts=max_attempts,
-                )
+            logging.info(f"\t\t{os.path.basename(ftp)} FTP download attempt {attempt + 1}")
+            execute(
+                f"wget --quiet -O {fastq} ftp://{ftp}", max_attempts=max_attempts
+            )
 
             fastq_md5 = md5sum(fastq)
             if fastq_md5 != md5:
@@ -339,34 +324,6 @@ def parse_query(query, is_study, is_experiment, is_run):
             return f"study_accession={query}"
 
 
-def check_aspera(ascp, private_key, speed):
-    """Verify Aspera Connect is available, not if it works."""
-    error_message = None
-    if not os.path.exists(ascp):
-        error_message = f'cannot access "{ascp}": No such file or directory'
-    else:
-        if private_key:
-            # User provided path to private key
-            if not os.path.exists(private_key):
-                error_message = (
-                    f'cannot access "{private_key}": No such file or directory'
-                )
-        else:
-            # Try to guess private key path, based on ascp path
-            key_path = os.path.dirname(ascp).replace("/bin", "/etc")
-            private_key = f"{key_path}/asperaweb_id_dsa.openssh"
-            if not os.path.exists(private_key):
-                error_message = (
-                    f'cannot access "{private_key}": No such file or directory'
-                )
-
-    if error_message:
-        logging.error(f"Aspera Related Error: {error_message}")
-        sys.exit(1)
-    else:
-        return {"ascp": ascp, "private_key": private_key, "speed": speed}
-
-
 def main():
     parser = argparse.ArgumentParser(
         prog=PROGRAM,
@@ -390,29 +347,6 @@ def main():
             "Specify which provider (ENA or SRA) to use. Accepted Values: ENA SRA "
             "[default: %(default)s]"
         ),
-    )
-
-    group2 = parser.add_argument_group("Aspera Connect Options")
-    group2.add_argument(
-        "--aspera",
-        metavar="STRING",
-        type=str,
-        help='Path to the Aspera Connect tool "ascp" (Default: "which ascp")',
-    )
-    group2.add_argument(
-        "--aspera_key",
-        metavar="STRING",
-        type=str,
-        help=(
-            "Path to Aspera Connect private key, if not given, guess based on ascp path"
-        ),
-    )
-    group2.add_argument(
-        "--aspera_speed",
-        metavar="STRING",
-        type=str,
-        default="100M",
-        help="Speed at which Aspera Connect will download. [default: %(default)s]",
     )
 
     group3 = parser.add_argument_group("Query Related Options")
@@ -502,16 +436,6 @@ def main():
     )
     logging.getLogger().setLevel(set_log_level(args.silent, args.verbose))
 
-    aspera = (
-        check_aspera(args.aspera, args.aspera_key, args.aspera_speed)
-        if args.aspera
-        else None
-    )
-    if not aspera:
-        if args.provider == "ena":
-            logging.info("Aspera Connect not available, using FTP for ENA downloads")
-        args.ftp_only = True
-
     outdir = os.getcwd() if args.outdir == "./" else f"{args.outdir}"
     query = parse_query(args.query, args.is_study, args.is_experiment, args.is_run)
 
@@ -541,7 +465,6 @@ def main():
             fastqs = ena_download(
                 run_info,
                 outdir,
-                aspera=aspera,
                 max_attempts=args.max_attempts,
                 ftp_only=args.ftp_only,
             )
@@ -584,7 +507,6 @@ def main():
                     fastqs = ena_download(
                         run_info,
                         outdir,
-                        aspera=aspera,
                         max_attempts=args.max_attempts,
                         ftp_only=args.ftp_only,
                     )
