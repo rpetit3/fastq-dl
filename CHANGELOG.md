@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for Biosample/Sample accessions
 - Rich click and logging support
 - type hints
+- Support for Gitpod
 
 ### Removed
 
