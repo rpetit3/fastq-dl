@@ -27,29 +27,29 @@ jobs:
       - name: Staging
         run: |
          echo "${CONDA}/envs/fastq-dl/bin" >> $GITHUB_PATH
-         echo "$GITHUB_WORKSPACE/fastq-dl" >> $GITHUB_PATH
+         echo "$GITHUB_WORKSPACE/fastq-dl/bin" >> $GITHUB_PATH
       - name: Test fastq-dl
         run: |
-         fastq-dl.py --version
-         fastq-dl.py --help
+         fastq-dl --version
+         fastq-dl --help
       - name: Test ENA Download
         run: |
-         fastq-dl.py --accession SRX1390608 --outdir test-ena --verbose
+         fastq-dl --accession SRX1390608 --outdir test-ena --verbose
       - name: Test SRA Download
         run: |
-         fastq-dl.py --accession SRX1390608 --provider SRA --outdir test-sra --verbose
+         fastq-dl --accession SRX1390608 --provider SRA --outdir test-sra --verbose
       - name: Test Experiment with duplicate runs
         run: |
-         fastq-dl.py --accession ERX012546 --provider sra --outdir test-duplicate --verbose
+         fastq-dl --accession ERX012546 --provider sra --outdir test-duplicate --verbose
       - name: Test Small Run (SRA)
         run: |
-         fastq-dl.py --accession SRX3606281 --provider SrA --outdir test-small-sra --verbose
+         fastq-dl --accession SRX3606281 --provider SrA --outdir test-small-sra --verbose
       - name: Test Small Run (ENA)
         run: |
-         fastq-dl.py --accession SRX3606281 --outdir test-small-ena --verbose
+         fastq-dl --accession SRX3606281 --outdir test-small-ena --verbose
       - name: Test BioSample (ENA)
         run: |
-         fastq-dl.py --accession SAMN06191622 --outdir test-biosample --verbose
+         fastq-dl --accession SAMN06191622 --outdir test-biosample --verbose
       - name: Test Sample (SRA)
         run: |
-         fastq-dl.py --accession SRS1904245 --provider SRA --outdir test-sample --verbose
+         fastq-dl --accession SRS1904245 --provider SRA --outdir test-sample --verbose
