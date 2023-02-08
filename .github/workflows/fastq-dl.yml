@@ -22,7 +22,7 @@ jobs:
           channels: conda-forge,bioconda,defaults
           channel-priority: strict
           activate-environment: fastq-dl
-          environment-file: environment.yml
+          environment-file: fastq-dl/environment.yml
           auto-update-conda: true
       - name: Staging
         run: |
