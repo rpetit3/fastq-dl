@@ -8,12 +8,22 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
     steps:
-      - name: Install fastq-dl
-        run: conda create -y -n fastq-dl -c conda-forge -c bioconda executor pigz 'python>=3.6' 'sra-tools>=3.0.1' requests wget
       - uses: actions/checkout@v2
         with:
           path: fastq-dl
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: '3.10'
+          miniforge-variant: Mambaforge
+          channels: conda-forge,bioconda,defaults
+          channel-priority: strict
+          activate-environment: fastq-dl
+          environment-file: environment.yml
+          auto-update-conda: true
       - name: Staging
         run: |
          echo "${CONDA}/envs/fastq-dl/bin" >> $GITHUB_PATH
