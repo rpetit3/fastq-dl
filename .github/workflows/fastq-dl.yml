@@ -12,9 +12,9 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
-      - uses: actions/checkout@v2
-        with:
-          path: fastq-dl
+      - name: Checkout rpetit3/fastq-dl
+        uses: actions/checkout@v2
+
       - uses: conda-incubator/setup-miniconda@v2
         with:
           python-version: '3.10'
@@ -24,28 +24,36 @@ jobs:
           activate-environment: fastq-dl
           environment-file: fastq-dl/environment.yml
           auto-update-conda: true
+
       - name: Test fastq-dl
         run: |
          bin/fastq-dl --version
          bin/fastq-dl --help
+
       - name: Test ENA Download
         run: |
          bin/fastq-dl --accession SRX1390608 --outdir test-ena --verbose
+
       - name: Test SRA Download
         run: |
          bin/fastq-dl --accession SRX1390608 --provider SRA --outdir test-sra --verbose
+
       - name: Test Experiment with duplicate runs
         run: |
          bin/fastq-dl --accession ERX012546 --provider sra --outdir test-duplicate --verbose
+
       - name: Test Small Run (SRA)
         run: |
          bin/fastq-dl --accession SRX3606281 --provider SrA --outdir test-small-sra --verbose
+
       - name: Test Small Run (ENA)
         run: |
          bin/fastq-dl --accession SRX3606281 --outdir test-small-ena --verbose
+
       - name: Test BioSample (ENA)
         run: |
          bin/fastq-dl --accession SAMN06191622 --outdir test-biosample --verbose
+
       - name: Test Sample (SRA)
         run: |
          bin/fastq-dl --accession SRS1904245 --provider SRA --outdir test-sample --verbose
