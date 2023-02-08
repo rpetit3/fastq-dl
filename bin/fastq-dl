@@ -15,6 +15,7 @@ from rich import print
 from rich.console import Console
 from rich.logging import RichHandler
 import rich_click as click
+
 click.rich_click.USE_RICH_MARKUP = True
 click.rich_click.OPTION_GROUPS = {
     "fastq-dl": [
@@ -490,8 +491,7 @@ def validate_query(query: str) -> str:
         return f"run_accession={query}"
     else:
         logging.error(
-            f"{query} is not a Study, Sample, Experiment, or Run accession. See https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html for valid options",
-            file=sys.stderr,
+            f"{query} is not a Study, Sample, Experiment, or Run accession. See https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html for valid options"
         )
         sys.exit(1)
 
@@ -508,8 +508,10 @@ def validate_query(query: str) -> str:
     default="ena",
     show_default=True,
     help="Specify which provider (ENA or SRA) to use.",
-    type=click.Choice(["ena", "sra"], case_sensitive=False,),
-    
+    type=click.Choice(
+        ["ena", "sra"],
+        case_sensitive=False,
+    ),
 )
 @click.option(
     "--group_by_experiment", is_flag=True, help="Group Runs by experiment accession."
@@ -552,13 +554,26 @@ def validate_query(query: str) -> str:
 @click.option(
     "--debug", is_flag=True, help="Skip downloads, print what will be downloaded."
 )
-def fastqdl(accession, provider, group_by_experiment, group_by_sample, outdir, prefix, max_attempts, only_provider, cpus, silent, verbose, debug):
+def fastqdl(
+    accession,
+    provider,
+    group_by_experiment,
+    group_by_sample,
+    outdir,
+    prefix,
+    max_attempts,
+    only_provider,
+    cpus,
+    silent,
+    verbose,
+    debug,
+):
     """Download FASTQ files from ENA or SRA."""
     # Setup logs
     logging.basicConfig(
         format="%(asctime)s:%(name)s:%(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
-        handlers=[RichHandler(rich_tracebacks=True)]
+        handlers=[RichHandler(rich_tracebacks=True)],
     )
     logging.getLogger().setLevel(set_log_level(silent, verbose))
     # Start Download Process
