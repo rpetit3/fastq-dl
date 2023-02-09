@@ -11,13 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Shorthand option `-a` for `--max_attempts` and `v` for `--verbose`
+- Shorthand option `-m` for `--max-attempts` and `-v` for `--verbose`
 - If metadata is unavailable from ENA, try fetching metadata from SRA using [`pysradb`][pysradb]
 - Provided query is validated against accession regular expressions
 - Support for Biosample/Sample accessions
 - Rich click and logging support
 - type hints
 - Support for Gitpod
+- Query must now be passed as `--accession/-a`
+- Packaging with `poetry`
 
 ### Removed
 

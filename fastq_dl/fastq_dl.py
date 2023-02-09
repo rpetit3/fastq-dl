@@ -8,33 +8,32 @@ import time
 from pathlib import Path
 
 import requests
+import rich
+import rich_click as click
 from executor import ExternalCommand, ExternalCommandFailed
 from pysradb import SRAweb
-
-from rich import print
-from rich.console import Console
 from rich.logging import RichHandler
-import rich_click as click
 
 click.rich_click.USE_RICH_MARKUP = True
 click.rich_click.OPTION_GROUPS = {
     "fastq-dl": [
-        {
-            "name": "Required Options",
-            "options": ["--query", "--provider"],
-        },
+        {"name": "Required Options", "options": ["--accession"]},
         {
             "name": "Additional Options",
             "options": [
-                "--group_by_experiment",
-                "--group_by_sample",
+                "--provider",
+                "--group-by-experiment",
+                "--group-by-sample",
                 "--outdir",
                 "--prefix",
                 "--cpus",
-                "--max_attempts",
+                "--max-attempts",
                 "--only-provider",
                 "--silent",
                 "--debug",
+                "--version",
+                "--verbose",
+                "--help",
             ],
         },
     ]
@@ -497,8 +496,9 @@ def validate_query(query: str) -> str:
 
 
 @click.command()
-@click.version_option(VERSION)
+@click.version_option(VERSION, "--version", "-V")
 @click.option(
+    "-a",
     "--accession",
     required=True,
     help="ENA/SRA accession to query. (Study, Sample, Experiment, Run accession)",
@@ -514,9 +514,9 @@ def validate_query(query: str) -> str:
     ),
 )
 @click.option(
-    "--group_by_experiment", is_flag=True, help="Group Runs by experiment accession."
+    "--group-by-experiment", is_flag=True, help="Group Runs by experiment accession."
 )
-@click.option("--group_by_sample", is_flag=True, help="Group Runs by sample accession.")
+@click.option("--group-by-sample", is_flag=True, help="Group Runs by sample accession.")
 @click.option(
     "--outdir",
     "-o",
@@ -531,8 +531,8 @@ def validate_query(query: str) -> str:
     help="Prefix to use for naming log files.",
 )
 @click.option(
-    "--max_attempts",
-    "-a",
+    "--max-attempts",
+    "-m",
     default=10,
     show_default=True,
     help="Maximum number of download attempts.",
@@ -554,6 +554,7 @@ def validate_query(query: str) -> str:
 @click.option(
     "--debug", is_flag=True, help="Skip downloads, print what will be downloaded."
 )
+@click.help_option("--help", "-h")
 def fastqdl(
     accession,
     provider,
@@ -573,7 +574,9 @@ def fastqdl(
     logging.basicConfig(
         format="%(asctime)s:%(name)s:%(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
-        handlers=[RichHandler(rich_tracebacks=True)],
+        handlers=[
+            RichHandler(rich_tracebacks=True, console=rich.console.Console(stderr=True))
+        ],
     )
     logging.getLogger().setLevel(set_log_level(silent, verbose))
     # Start Download Process
@@ -682,8 +685,9 @@ def fastqdl(
     write_json(ena_data, f"{outdir}/{prefix}-run-info.json")
 
 
+def main():
+    fastqdl()
+
+
 if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        fastqdl.main(["--help"])
-    else:
-        fastqdl()
+    main()
