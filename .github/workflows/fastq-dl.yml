@@ -68,3 +68,11 @@ jobs:
       - name: Test Sample (SRA)
         run: |
           fastq-dl --accession SRS1904245 --provider SRA --outdir test-sample --verbose
+
+      - name: Test --group-by-sample (ENA)
+        run: |
+          fastq-dl --accession SRS1904245 --outdir test-group-by-sample --verbose --group-by-sample
+
+      - name: Test --group-by-experiment (SRA)
+        run: |
+          fastq-dl --accession ERX012546 --outdir test-group-by-experiment --verbose --group-by-sample

@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
+import csv
 import hashlib
-import json
 import logging
 import re
 import sys
@@ -445,15 +445,32 @@ def get_run_info(accession: str, query: str) -> tuple:
             return SRA, sra_data
 
 
-def write_json(data: dict, output: str) -> None:
-    """Write a JSON file.
+def write_tsv(data: dict, output: str) -> None:
+    """Write a TSV file.
 
     Args:
-        data (dict): Data to be written to JSON.
-        output (str): File to write the JSON to.
+        data (dict): Data to be written to TSV.
+        output (str): File to write the TSV to.
     """
     with open(output, "w") as fh:
-        json.dump(data, fh, indent=4, sort_keys=True)
+        if output.endswith("-run-mergers.tsv"):
+            writer = csv.DictWriter(
+                fh, fieldnames=["accession", "r1", "r2"], delimiter="\t"
+            )
+            writer.writeheader()
+            for accession, vals in data.items():
+                writer.writerow(
+                    {
+                        "accession": accession,
+                        "r1": ";".join(vals["r1"]),
+                        "r2": ";".join(vals["r2"]),
+                    }
+                )
+        else:
+            writer = csv.DictWriter(fh, fieldnames=data[0].keys(), delimiter="\t")
+            writer.writeheader()
+            for row in data:
+                writer.writerow(row)
 
 
 def validate_query(query: str) -> str:
@@ -670,7 +687,7 @@ def fastqdl(
     if runs and not debug:
         for name, vals in runs.items():
             if len(vals["r1"]) and len(vals["r2"]):
-                # Not all runs labled as paired are actually paired.
+                # Not all runs labeled as paired are actually paired.
                 if len(vals["r1"]) == len(vals["r2"]):
                     logging.info(f"\tMerging paired end runs to {name}...")
                     merge_runs(vals["r1"], f"{outdir}/{name}_R1.fastq.gz")
@@ -681,8 +698,8 @@ def fastqdl(
             else:
                 logging.info("\tMerging single end runs to experiment...")
                 merge_runs(vals["r1"], f"{outdir}/{name}.fastq.gz")
-        write_json(runs, f"{outdir}/{prefix}-run-mergers.json")
-    write_json(ena_data, f"{outdir}/{prefix}-run-info.json")
+        write_tsv(runs, f"{outdir}/{prefix}-run-mergers.tsv")
+    write_tsv(ena_data, f"{outdir}/{prefix}-run-info.tsv")
 
 
 def main():
