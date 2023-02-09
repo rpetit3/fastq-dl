@@ -5,9 +5,10 @@ tasks:
     init: |
       . /opt/conda/etc/profile.d/conda.sh
       conda activate base
+      sleep 5
       mamba env create --name fastq-dl --file /workspace/fastq-dl/environment.yml
       conda activate fastq-dl
-      mamba install -y just poetry pre-commit
+      mamba install -y -c conda-forge -c bioconda just pre-commit
       mkdir -p .vscode
       echo '{"python.pythonPath": "/home/gitpod/.conda/envs/fastq-dl/bin/python"}' > .vscode/settings.json
       pre-commit install --install-hooks
