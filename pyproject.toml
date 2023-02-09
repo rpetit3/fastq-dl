@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "fastq-dl"
+version = "2.0.0"
+description = "Download FASTQ files from SRA or ENA repositories."
+authors = [
+    "Robert A. Petit III <robbie.petit@gmail.com>",
+    "Michael B. Hall <michael@mbh.sh>"
+]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/rpetit3/fastq-dl"
+repository = "https://github.com/rpetit3/fastq-dl"
+keywords = ["bioinformatics", "fastq", "download", "SRA", "ENA"]
+
+[tool.poetry.scripts]
+fastq-dl = "fastq_dl.fastq_dl:main"
+
+[tool.poetry.dependencies]
+python = "^3.7.1"
+requests = "^2.28.2"
+pysradb = "^1.4"
+rich-click = "^1.6.1"
+executor = "^23.2"
+rich = "^13.3.1"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.1.0"
+isort = "^5.0"
+flake8 = "^5.0"
+
+[tool.isort]
+profile = "black"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
