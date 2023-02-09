@@ -9,21 +9,15 @@ from pathlib import Path
 
 import requests
 import rich
+import rich_click as click
 from executor import ExternalCommand, ExternalCommandFailed
 from pysradb import SRAweb
-
 from rich.logging import RichHandler
-import rich_click as click
 
 click.rich_click.USE_RICH_MARKUP = True
 click.rich_click.OPTION_GROUPS = {
     "fastq-dl": [
-        {
-            "name": "Required Options",
-            "options": [
-                "--accession"
-            ]
-        },
+        {"name": "Required Options", "options": ["--accession"]},
         {
             "name": "Additional Options",
             "options": [
@@ -39,7 +33,7 @@ click.rich_click.OPTION_GROUPS = {
                 "--debug",
                 "--version",
                 "--verbose",
-                "--help"
+                "--help",
             ],
         },
     ]
@@ -580,7 +574,9 @@ def fastqdl(
     logging.basicConfig(
         format="%(asctime)s:%(name)s:%(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
-        handlers=[RichHandler(rich_tracebacks=True, console=rich.console.Console(stderr=True))],
+        handlers=[
+            RichHandler(rich_tracebacks=True, console=rich.console.Console(stderr=True))
+        ],
     )
     logging.getLogger().setLevel(set_log_level(silent, verbose))
     # Start Download Process
