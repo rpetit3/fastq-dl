@@ -15,16 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - If metadata is unavailable from ENA, try fetching metadata from SRA using [`pysradb`][pysradb]
 - Provided query is validated against accession regular expressions
 - Support for Biosample/Sample accessions
-- Rich click and logging support
-- type hints
+- Rich click, logging support, type hints
 - Support for Gitpod
 - Query must now be passed as `--accession/-a`
 - Packaging with `poetry`
+- README improvements
 
 ### Removed
 
 - Deprecated `--sra_only` parameter is now removed
 - `--ftp_only` no longer required without Aspera support
+- Non-functioning `--debug` option
+- Uneeded logging levels
 
 [2.0.0]: https://github.com/rpetit3/fastq-dl/compare/v1.2.0...v2.0.0
 [pysradb]: https://github.com/saketkc/pysradb

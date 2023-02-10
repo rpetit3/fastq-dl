@@ -30,7 +30,6 @@ click.rich_click.OPTION_GROUPS = {
                 "--max-attempts",
                 "--only-provider",
                 "--silent",
-                "--debug",
                 "--version",
                 "--verbose",
                 "--help",
@@ -41,15 +40,10 @@ click.rich_click.OPTION_GROUPS = {
 
 PROGRAM = "fastq-dl"
 VERSION = "2.0.0"
-STDOUT = 11
-STDERR = 12
 ENA_FAILED = "ENA_NOT_FOUND"
 SRA_FAILED = "SRA_NOT_FOUND"
 SRA = "SRA"
 ENA = "ENA"
-
-logging.addLevelName(STDOUT, "STDOUT")
-logging.addLevelName(STDERR, "STDERR")
 
 ENA_URL = "https://www.ebi.ac.uk/ena/portal/api/search?result=read_run&format=tsv"
 FIELDS = [
@@ -107,16 +101,6 @@ FIELDS = [
 ]
 
 
-def set_log_level(error, debug):
-    """Set the output log level."""
-    return logging.ERROR if error else logging.DEBUG if debug else logging.INFO
-
-
-def get_log_level():
-    """Return logging level name."""
-    return logging.getLevelName(logging.getLogger().getEffectiveLevel())
-
-
 def execute(
     cmd: str,
     directory: str = str(Path.cwd()),
@@ -157,9 +141,8 @@ def execute(
             )
 
             command.start()
-            if get_log_level() == "DEBUG":
-                logging.log(STDOUT, command.decoded_stdout)
-                logging.log(STDERR, command.decoded_stderr)
+            logging.debug(command.decoded_stdout)
+            logging.debug(command.decoded_stderr)
 
             if capture_stdout:
                 return command.decoded_stdout
@@ -334,7 +317,7 @@ def download_ena_fastq(
 
             fastq_md5 = md5sum(fastq)
             if fastq_md5 != md5:
-                logging.log(STDOUT, f"MD5s, Observed: {fastq_md5}, Expected: {md5}")
+                logging.debug(f"MD5s, Observed: {fastq_md5}, Expected: {md5}")
                 attempt += 1
                 if Path(fastq).exists():
                     Path(fastq).unlink()
@@ -493,16 +476,16 @@ def validate_query(query: str) -> str:
 
     https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html
     """
-    if re.match(r"PRJ[EDN][A-Z][0-9]+|[EDS]RP[0-9]{6,}", query):
+    if re.match(r"^PRJ[EDN][A-Z][0-9]+$|^[EDS]RP[0-9]{6,}$", query):
         # Is a project or study accession
         return f"(study_accession={query} OR secondary_study_accession={query})"
-    elif re.match(r"SAM[EDN][A-Z]?[0-9]+|[EDS]RS[0-9]{6,}", query):
+    elif re.match(r"^SAM[EDN][A-Z]?[0-9]+$|^[EDS]RS[0-9]{6,}$", query):
         # Is a sample or biosample accession
         return f"(sample_accession={query} OR secondary_sample_accession={query})"
-    elif re.match(r"[EDS]RX[0-9]{6,}", query):
+    elif re.match(r"^[EDS]RX[0-9]{6,}$", query):
         # Is an experiment accession
         return f"experiment_accession={query}"
-    elif re.match(r"[EDS]RR[0-9]{6,}", query):
+    elif re.match(r"^[EDS]RR[0-9]{6,}$", query):
         # Is a run accession
         return f"run_accession={query}"
     else:
@@ -568,9 +551,6 @@ def validate_query(query: str) -> str:
 )
 @click.option("--silent", is_flag=True, help="Only critical errors will be printed.")
 @click.option("--verbose", "-v", is_flag=True, help="Print debug related text.")
-@click.option(
-    "--debug", is_flag=True, help="Skip downloads, print what will be downloaded."
-)
 @click.help_option("--help", "-h")
 def fastqdl(
     accession,
@@ -584,7 +564,6 @@ def fastqdl(
     cpus,
     silent,
     verbose,
-    debug,
 ):
     """Download FASTQ files from ENA or SRA."""
     # Setup logs
@@ -595,7 +574,10 @@ def fastqdl(
             RichHandler(rich_tracebacks=True, console=rich.console.Console(stderr=True))
         ],
     )
-    logging.getLogger().setLevel(set_log_level(silent, verbose))
+
+    logging.getLogger().setLevel(
+        logging.ERROR if silent else logging.DEBUG if verbose else logging.INFO
+    )
     # Start Download Process
     query = validate_query(accession)
     data_from, ena_data = get_run_info(accession, query)
@@ -606,6 +588,7 @@ def fastqdl(
     downloaded = {}
     runs = {} if group_by_experiment or group_by_sample else None
     outdir = Path.cwd() if outdir == "./" else f"{outdir}"
+
     for i, run_info in enumerate(ena_data):
         run_acc = run_info["run_accession"]
         if run_acc not in downloaded:
@@ -684,7 +667,7 @@ def fastqdl(
                     runs[name]["r2"].append(fastqs["r2"])
 
     # If applicable, merge runs
-    if runs and not debug:
+    if runs:
         for name, vals in runs.items():
             if len(vals["r1"]) and len(vals["r2"]):
                 # Not all runs labeled as paired are actually paired.

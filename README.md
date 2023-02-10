@@ -55,7 +55,6 @@ fastq-dl --help
 │                                       [default: 10]                                    │
 │ --only-provider        -F             Only attempt download from specified provider.   │
 │ --silent                              Only critical errors will be printed.            │
-│ --debug                               Skip downloads, print what will be downloaded.   │
 │ --version              -V             Show the version and exit.                       │
 │ --verbose              -v             Print debug related text.                        │
 │ --help                 -h             Show this message and exit.                      │
