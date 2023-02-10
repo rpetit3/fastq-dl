@@ -9,7 +9,7 @@ Download FASTQ files from the [European Nucleotide Archive](https://www.ebi.ac.u
 
 ## Introduction
 
-fastq-dl takes an ENA/SRA accession (Study, Experiment, or Run) and queries ENA (via
+`fastq-dl` takes an ENA/SRA accession (Study, Experiment, or Run) and queries ENA (via
 [Data Warehouse API](https://www.ebi.ac.uk/ena/browse/search-rest)) to determine the associated
 metadata. It then downloads FASTQ files for each Run. For Samples or Experiments with multiple
 Runs, users can optionally merge the runs.
@@ -18,7 +18,7 @@ Runs, users can optionally merge the runs.
 
 ### Bioconda
 
-fastq-dl is available from [Bioconda](https://bioconda.github.io/) and I highly recommend you
+`fastq-dl` is available from [Bioconda](https://bioconda.github.io/) and I highly recommend you
 go this route to for installation.
 
 ```{bash}
@@ -39,8 +39,7 @@ fastq-dl --help
                                                                                           
 ╭─ Required Options ─────────────────────────────────────────────────────────────────────╮
 │ *  --accession  -a  TEXT  ENA/SRA accession to query. (Study, Sample, Experiment, Run  │
-│                           accession)                                                   │
-│                           [required]                                                   │
+│                           accession) [required]                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Additional Options ───────────────────────────────────────────────────────────────────╮
 │ --provider                 [ena|sra]  Specify which provider (ENA or SRA) to use.      │
@@ -114,8 +113,6 @@ Experiment accession (`--group-by-experiment`) or Sample accession (`--group-by-
 | `-run-mergers.tsv` | Tab-delimited file merge information from `--group-by-experiment` or `--group-by-sample` |
 | `.fastq.gz`        | FASTQ files downloaded from ENA or SRA                                                   |
 
-
-
 ## Example Usage
 
 #### Download FASTQs associated with a Study
@@ -180,7 +177,7 @@ The above command would download the Run SRR1178105 from SRA. Run accessions are
 line (1-to-1 relationship), so you will always get the expected Run.
 
 ## Alternatives
-fastq-dl, is a spin-off of [ena-dl](https://github.com/rpetit3/ena-dl), that has been developed for
+`fastq-dl`, is a spin-off of [ena-dl](https://github.com/rpetit3/ena-dl), that has been developed for
 usage with [Bactopia](https://github.com/bactopia/bactopia). With this in mind, EBI/NCBI and provide
 their own tools ([enaBrowserTools](https://github.com/enasequence/enaBrowserTools) and
 [SRA Toolkit](https://github.com/ncbi/sra-tools)) that offer more extensive access to their databases.
