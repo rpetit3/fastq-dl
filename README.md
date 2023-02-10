@@ -61,8 +61,8 @@ fastq-dl --help
 
 *fastq-dl* requires a single ENA/SRA Study, Sample, Experiment, or Run accession and FASTQs
 for all Runs that fall under the given accession will be downloaded. For example, if a Study
-accession is given all Runs under that studies umbrella will be downloaded. Which archive to
-download from, either *ENA* or *SRA*, is also required.
+accession is given all Runs under that studies umbrella will be downloaded. By default, 
+`fastq-dl` will try to download from ENA first, then SRA.
 
 ### --accession
 
