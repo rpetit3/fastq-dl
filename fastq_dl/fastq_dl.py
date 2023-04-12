@@ -161,7 +161,10 @@ def execute(
                 logging.error(f"Retry execution ({attempt} of {max_attempts})")
                 time.sleep(10)
             else:
-                raise error
+                if is_sra:
+                    return SRA_FAILED
+                else:
+                    return ENA_FAILED
 
 
 def sra_download(
@@ -253,6 +256,8 @@ def ena_download(run: str, outdir: str, max_attempts: int = 10) -> dict:
                 md5[i],
                 max_attempts=max_attempts,
             )
+            if fastq==ENA_FAILED:
+                return ENA_FAILED
 
             if is_r2:
                 fastqs["r2"] = fastq
@@ -313,7 +318,9 @@ def download_ena_fastq(
 
         while not success:
             logging.info(f"\t\t{Path(ftp).name} FTP download attempt {attempt + 1}")
-            execute(f"wget --quiet -O {fastq} ftp://{ftp}", max_attempts=max_attempts)
+            outcome = execute(f"wget --quiet -O {fastq} ftp://{ftp}", max_attempts=max_attempts)
+            if outcome==ENA_FAILED:
+                return ENA_FAILED
 
             fastq_md5 = md5sum(fastq)
             if fastq_md5 != md5:
