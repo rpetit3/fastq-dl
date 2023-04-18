@@ -4,6 +4,7 @@ import hashlib
 import logging
 import re
 import sys
+import os
 import time
 from pathlib import Path
 
@@ -28,6 +29,7 @@ click.rich_click.OPTION_GROUPS = {
                 "--prefix",
                 "--cpus",
                 "--max-attempts",
+                "--force",
                 "--only-provider",
                 "--silent",
                 "--version",
@@ -168,7 +170,7 @@ def execute(
 
 
 def sra_download(
-    accession: str, outdir: str, cpus: int = 1, max_attempts: int = 10
+    accession: str, outdir: str, cpus: int = 1, max_attempts: int = 10, force: bool = False
 ) -> dict:
     """Download FASTQs from SRA using fasterq-dump.
 
@@ -185,37 +187,64 @@ def sra_download(
     se = f"{outdir}/{accession}.fastq.gz"
     pe = f"{outdir}/{accession}_2.fastq.gz"
 
+    # remove existing files if force is selected. 
+    # TODO: only remove if the MD5 checksum is different.
+    if force and Path(se).exists():
+        os.remove(se)
+        logging.warning(f"Overwriting existing files!")
+    if force and Path(pe).exists():
+        os.remove(pe)
+        logging.warning(f"Overwriting existing files!")
+
     if not Path(se).exists() and not Path(pe).exists():
         Path(outdir).mkdir(parents=True, exist_ok=True)
+
+        # TODO: add check of read count as a proxy for checksum?
         outcome = execute(
-            f"fasterq-dump {accession} --split-files --threads {cpus}",
+            f"prefetch {accession} --max-size 10T -o {accession}.sra",
             max_attempts=max_attempts,
             directory=outdir,
             is_sra=True,
         )
+
+        if outcome == SRA_FAILED:
+            return outcome
+        else:
+            outcome = execute(
+                f"fasterq-dump {accession} --split-3 --mem 1G --threads {cpus}",
+                max_attempts=max_attempts,
+                directory=outdir,
+                is_sra=True,
+            )
+
         if outcome == SRA_FAILED:
             return outcome
         else:
             execute(f"pigz --force -p {cpus} -n {accession}*.fastq", directory=outdir)
+            os.remove(f"{outdir}/{accession}.sra")
 
     if Path(f"{outdir}/{accession}_2.fastq.gz").exists():
         # Paired end
         fastqs["r1"] = f"{outdir}/{accession}_1.fastq.gz"
         fastqs["r2"] = f"{outdir}/{accession}_2.fastq.gz"
-        fastqs["single_end"] = False
+        if Path(f"{outdir}/{accession}.fastq.gz").exists():
+            fastqs["single_end"] = f"{outdir}/{accession}.fastq.gz"
+        else:
+            fastqs["single_end"] = False
     else:
         fastqs["r1"] = f"{outdir}/{accession}.fastq.gz"
 
     return fastqs
 
 
-def ena_download(run: str, outdir: str, max_attempts: int = 10) -> dict:
+def ena_download(run: str, outdir: str, max_attempts: int = 10, force: bool = False) -> dict:
     """Download FASTQs from ENA FTP using wget.
 
     Args:
         accession (str): The accession to download associated FASTQs.
         outdir (str): Directory to write FASTQs to.
         max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.
+        force: (bool, optional): Whether to overwrite existing files if the MD5's do not match
 
     Returns:
         dict: A dictionary of the FASTQs and their paired status.
@@ -255,6 +284,7 @@ def ena_download(run: str, outdir: str, max_attempts: int = 10) -> dict:
                 outdir,
                 md5[i],
                 max_attempts=max_attempts,
+                force = force
             )
             if fastq==ENA_FAILED:
                 return ENA_FAILED
@@ -297,6 +327,7 @@ def download_ena_fastq(
     outdir: str,
     md5: str,
     max_attempts: int = 10,
+    force: bool = False,
 ) -> str:
     """Download FASTQs from ENA using FTP.
 
@@ -305,6 +336,7 @@ def download_ena_fastq(
         outdir (str): Directory to download the FASTQ to.
         md5 (str): Expected MD5 checksum of the FASTQ.
         max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.
+        force: (bool, optional): Whether to overwrite existing files if the MD5's do not match
 
     Returns:
         str: Path to the downloaded FASTQ.
@@ -312,6 +344,13 @@ def download_ena_fastq(
     success = False
     attempt = 0
     fastq = f"{outdir}/{Path(ftp).name}"
+
+    if Path(fastq).exists() and force:
+        fastq_md5 = md5sum(fastq)
+        if fastq_md5 != md5:
+            # the existing file does not match.
+            logging.warning(f"MD5 checksums do not match! {md5} vs {fastq_md5} Overwriting existing files.")
+            os.remove(fastq)
 
     if not Path(fastq).exists():
         Path(outdir).mkdir(parents=True, exist_ok=True)
@@ -545,7 +584,11 @@ def validate_query(query: str) -> str:
     help="Maximum number of download attempts.",
 )
 @click.option(
-    "-F",
+    "--force",
+    is_flag=True,
+    help="Overwrite existing files if their MD5 cheksums do not match.",
+)
+@click.option(
     "--only-provider",
     is_flag=True,
     help="Only attempt download from specified provider.",
@@ -567,6 +610,7 @@ def fastqdl(
     outdir,
     prefix,
     max_attempts,
+    force,
     only_provider,
     cpus,
     silent,
@@ -610,6 +654,7 @@ def fastqdl(
                 run_info,
                 outdir,
                 max_attempts=max_attempts,
+                force=force,
             )
 
             if fastqs == ENA_FAILED:
@@ -626,6 +671,7 @@ def fastqdl(
                         outdir,
                         cpus=cpus,
                         max_attempts=max_attempts,
+                        force=force,
                     )
                     if fastqs == SRA_FAILED:
                         logging.error(f"\t{run_acc} not found on SRA")
@@ -638,6 +684,7 @@ def fastqdl(
                 outdir,
                 cpus=cpus,
                 max_attempts=max_attempts,
+                force=force,
             )
             if fastqs == SRA_FAILED:
                 if only_provider or data_from == SRA:
@@ -651,6 +698,7 @@ def fastqdl(
                         run_info,
                         outdir,
                         max_attempts=max_attempts,
+                        force=force,
                     )
                     if fastqs == ENA_FAILED:
                         logging.error(f"\tNo fastqs found in ENA for {run_acc}")
