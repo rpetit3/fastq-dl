@@ -585,7 +585,7 @@ def validate_query(query: str) -> str:
 @click.option(
     "--force",
     is_flag=True,
-    help="Overwrite existing files if their MD5 cheksums do not match.",
+    help="Overwrite existing files if their MD5 checksums do not match.",
 )
 @click.option(
     "--only-provider",
