@@ -4,7 +4,6 @@ import hashlib
 import logging
 import re
 import sys
-import os
 import time
 from pathlib import Path
 
@@ -190,10 +189,10 @@ def sra_download(
     # remove existing files if force is selected. 
     # TODO: only remove if the MD5 checksum is different.
     if force and Path(se).exists():
-        os.remove(se)
+        Path(se).unlink()
         logging.warning(f"Overwriting existing files!")
     if force and Path(pe).exists():
-        os.remove(pe)
+        Path(pe).unlink()
         logging.warning(f"Overwriting existing files!")
 
     if not Path(se).exists() and not Path(pe).exists():
@@ -221,7 +220,7 @@ def sra_download(
             return outcome
         else:
             execute(f"pigz --force -p {cpus} -n {accession}*.fastq", directory=outdir)
-            os.remove(f"{outdir}/{accession}.sra")
+            Path(f"{outdir}/{accession}.sra").unlink()
 
     if Path(f"{outdir}/{accession}_2.fastq.gz").exists():
         # Paired end
@@ -350,7 +349,7 @@ def download_ena_fastq(
         if fastq_md5 != md5:
             # the existing file does not match.
             logging.warning(f"MD5 checksums do not match! {md5} vs {fastq_md5} Overwriting existing files.")
-            os.remove(fastq)
+            Path(fastq).unlink()
 
     if not Path(fastq).exists():
         Path(outdir).mkdir(parents=True, exist_ok=True)
