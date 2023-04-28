@@ -604,7 +604,9 @@ def fastqdl(
             if run_acc not in downloaded:
                 downloaded[run_acc] = True
             else:
-                logging.warning(f"Duplicate run {run_acc} found, skipping re-download...")
+                logging.warning(
+                    f"Duplicate run {run_acc} found, skipping re-download..."
+                )
                 continue
             logging.info(f"\tWorking on run {run_acc}...")
             fastqs = None
