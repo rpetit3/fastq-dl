@@ -149,7 +149,7 @@ def execute(
                 return command.decoded_stdout
             else:
                 return command.returncode
-        except ExternalCommandFailed as error:
+        except ExternalCommandFailed:
             logging.error(f'"{cmd}" return exit code {command.returncode}')
 
             if is_sra and command.returncode == 3:
@@ -169,7 +169,11 @@ def execute(
 
 
 def sra_download(
-    accession: str, outdir: str, cpus: int = 1, max_attempts: int = 10, force: bool = False
+    accession: str,
+    outdir: str,
+    cpus: int = 1,
+    max_attempts: int = 10,
+    force: bool = False,
 ) -> dict:
     """Download FASTQs from SRA using fasterq-dump.
 
@@ -186,14 +190,14 @@ def sra_download(
     se = f"{outdir}/{accession}.fastq.gz"
     pe = f"{outdir}/{accession}_2.fastq.gz"
 
-    # remove existing files if force is selected. 
+    # remove existing files if force is selected.
     # TODO: only remove if the MD5 checksum is different.
     if force and Path(se).exists():
         Path(se).unlink()
-        logging.warning(f"Overwriting existing files!")
+        logging.warning("Overwriting existing files!")
     if force and Path(pe).exists():
         Path(pe).unlink()
-        logging.warning(f"Overwriting existing files!")
+        logging.warning("Overwriting existing files!")
 
     if not Path(se).exists() and not Path(pe).exists():
         Path(outdir).mkdir(parents=True, exist_ok=True)
@@ -236,7 +240,9 @@ def sra_download(
     return fastqs
 
 
-def ena_download(run: str, outdir: str, max_attempts: int = 10, force: bool = False) -> dict:
+def ena_download(
+    run: str, outdir: str, max_attempts: int = 10, force: bool = False
+) -> dict:
     """Download FASTQs from ENA FTP using wget.
 
     Args:
@@ -279,13 +285,9 @@ def ena_download(run: str, outdir: str, max_attempts: int = 10, force: bool = Fa
         # Download Run
         if md5[i]:
             fastq = download_ena_fastq(
-                ftp[i],
-                outdir,
-                md5[i],
-                max_attempts=max_attempts,
-                force = force
+                ftp[i], outdir, md5[i], max_attempts=max_attempts, force=force
             )
-            if fastq==ENA_FAILED:
+            if fastq == ENA_FAILED:
                 return ENA_FAILED
 
             if is_r2:
@@ -348,7 +350,9 @@ def download_ena_fastq(
         fastq_md5 = md5sum(fastq)
         if fastq_md5 != md5:
             # the existing file does not match.
-            logging.warning(f"MD5 checksums do not match! {md5} vs {fastq_md5} Overwriting existing files.")
+            logging.warning(
+                f"MD5 checksums do not match! {md5} vs {fastq_md5} Overwriting existing files."
+            )
             Path(fastq).unlink()
 
     if not Path(fastq).exists():
@@ -356,8 +360,10 @@ def download_ena_fastq(
 
         while not success:
             logging.info(f"\t\t{Path(ftp).name} FTP download attempt {attempt + 1}")
-            outcome = execute(f"wget --quiet -O {fastq} ftp://{ftp}", max_attempts=max_attempts)
-            if outcome==ENA_FAILED:
+            outcome = execute(
+                f"wget --quiet -O {fastq} ftp://{ftp}", max_attempts=max_attempts
+            )
+            if outcome == ENA_FAILED:
                 return ENA_FAILED
 
             fastq_md5 = md5sum(fastq)
