@@ -12,6 +12,7 @@ tasks:
       mkdir -p .vscode
       echo '{"python.pythonPath": "/home/gitpod/.conda/envs/fastq-dl/bin/python"}' > .vscode/settings.json
       pre-commit install --install-hooks
+      just install
     command: |
 
 vscode:

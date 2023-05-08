@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastq-dl"
-version = "2.0.0"
+version = "2.0.1"
 description = "Download FASTQ files from SRA or ENA repositories."
 authors = [
     "Robert A. Petit III <robbie.petit@gmail.com>",
@@ -22,6 +22,7 @@ pysradb = "^1.4"
 rich-click = "^1.6.1"
 executor = "^23.2"
 rich = "^13.3.1"
+markdown-it-py = "2.2.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
