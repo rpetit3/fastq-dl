@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1]
+
+### Fixed
+
+- Invalid fieldName(s) in ENA query @mbhall88
+- gitpod dependency and setup
+- dependabot PR
+
+[2.0.1]: https://github.com/rpetit3/fastq-dl/compare/v2.0.0...v2.0.1
+
 ## [2.0.0]
 
 ### Added
