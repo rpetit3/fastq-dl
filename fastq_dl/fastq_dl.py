@@ -39,7 +39,7 @@ click.rich_click.OPTION_GROUPS = {
 }
 
 PROGRAM = "fastq-dl"
-VERSION = "2.0.0"
+VERSION = "2.0.1"
 ENA_FAILED = "ENA_NOT_FOUND"
 SRA_FAILED = "SRA_NOT_FOUND"
 SRA = "SRA"
