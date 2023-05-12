@@ -41,7 +41,7 @@ click.rich_click.OPTION_GROUPS = {
 }
 
 PROGRAM = "fastq-dl"
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 ENA_FAILED = "ENA_NOT_FOUND"
 SRA_FAILED = "SRA_NOT_FOUND"
 SRA = "SRA"
@@ -135,18 +135,21 @@ def sra_download(
     """
     fastqs = {"r1": "", "r2": "", "single_end": True}
     se = f"{outdir}/{accession}.fastq.gz"
-    pe = f"{outdir}/{accession}_2.fastq.gz"
+    pe1 = f"{outdir}/{accession}_1.fastq.gz"
+    pe2 = f"{outdir}/{accession}_2.fastq.gz"
 
     # remove existing files if force is selected.
     # TODO: only remove if the MD5 checksum is different.
     if force and Path(se).exists():
         Path(se).unlink()
-        logging.warning("Overwriting existing files!")
-    if force and Path(pe).exists():
-        Path(pe).unlink()
-        logging.warning("Overwriting existing files!")
+        logging.warning(f"Overwriting existing file: {se}")
+    if force and Path(pe1).exists() and Path(pe2).exists():
+        Path(pe1).unlink()
+        Path(pe2).unlink()
+        logging.warning(f"Overwriting existing file: {pe1}")
+        logging.warning(f"Overwriting existing file: {pe2}")
 
-    if not Path(se).exists() and not Path(pe).exists():
+    if not Path(se).exists() and not (Path(pe1).exists() and Path(pe2).exists()):
         Path(outdir).mkdir(parents=True, exist_ok=True)
 
         # TODO: add check of read count as a proxy for checksum?
@@ -172,6 +175,12 @@ def sra_download(
         else:
             execute(f"pigz --force -p {cpus} -n {accession}*.fastq", directory=outdir)
             Path(f"{outdir}/{accession}.sra").unlink()
+    else:
+        if Path(se).exists():
+            logging.debug(f"Skipping re-download of existing file: {se}")
+        elif Path(pe1).exists() and Path(pe2).exists():
+            logging.debug(f"Skipping re-download of existing file: {pe1}")
+            logging.debug(f"Skipping re-download of existing file: {pe2}")
 
     if Path(f"{outdir}/{accession}_2.fastq.gz").exists():
         # Paired end
@@ -294,13 +303,8 @@ def download_ena_fastq(
     fastq = f"{outdir}/{Path(ftp).name}"
 
     if Path(fastq).exists() and force:
-        fastq_md5 = md5sum(fastq)
-        if fastq_md5 != md5:
-            # the existing file does not match.
-            logging.warning(
-                f"MD5 checksums do not match! {md5} vs {fastq_md5} Overwriting existing files."
-            )
-            Path(fastq).unlink()
+        logging.warning(f"Overwriting existing file: {fastq}")
+        Path(fastq).unlink()
 
     if not Path(fastq).exists():
         Path(outdir).mkdir(parents=True, exist_ok=True)
@@ -313,23 +317,29 @@ def download_ena_fastq(
             if outcome == ENA_FAILED:
                 return ENA_FAILED
 
-            fastq_md5 = md5sum(fastq)
-            if fastq_md5 != md5:
-                logging.debug(f"MD5s, Observed: {fastq_md5}, Expected: {md5}")
-                attempt += 1
-                if Path(fastq).exists():
-                    Path(fastq).unlink()
-                if attempt > max_attempts:
-                    logging.error(
-                        f"Download failed after {max_attempts} attempts. "
-                        "Please try again later or manually from SRA/ENA."
-                    )
-                    sys.exit(1)
-
-                # Hiccup? Wait a bit before trying again.
-                time.sleep(10)
-            else:
+            if force:
+                logging.debug(f"--force used, skipping MD5sum check for {fastq}")
                 success = True
+            else:
+                fastq_md5 = md5sum(fastq)
+                if fastq_md5 != md5:
+                    logging.debug(f"MD5s, Observed: {fastq_md5}, Expected: {md5}")
+                    attempt += 1
+                    if Path(fastq).exists():
+                        Path(fastq).unlink()
+                    if attempt > max_attempts:
+                        logging.error(
+                            f"Download failed after {max_attempts} attempts. "
+                            "Please try again later or manually from SRA/ENA."
+                        )
+                        sys.exit(1)
+
+                    # Hiccup? Wait a bit before trying again.
+                    time.sleep(10)
+                else:
+                    success = True
+    else:
+        logging.debug(f"Skipping re-download of existing file: {fastq}")
 
     return fastq
 
@@ -397,7 +407,9 @@ def get_ena_metadata(query: str) -> list:
         return [False, [r.status_code, r.text]]
 
 
-def get_run_info(accession: str, query: str) -> tuple:
+def get_run_info(
+    accession: str, query: str, provider: str, only_provider: bool
+) -> tuple:
     """Retrieve a list of samples available from ENA.
 
     The first attempt will be against ENA, and if that fails, SRA will be queried. This should
@@ -406,25 +418,47 @@ def get_run_info(accession: str, query: str) -> tuple:
     Args:
         accession (str): The accession to search for.
         query (str): A formatted query for ENA searches.
+        provider (str): Limit queries only to the specified provider (requires only_provider be true)
+        only_provider (bool): If true, limit queries to the specified provider
 
     Returns:
         tuple: Records associated with the accession.
     """
 
     logging.debug("Querying ENA for metadata...")
-    success, ena_data = get_ena_metadata(query)
-    if success:
-        return ENA, ena_data
-    else:
-        logging.debug("Failed to get metadata from ENA. Trying SRA...")
-        success, sra_data = get_sra_metadata(accession)
-        if not success:
-            logging.error("There was an issue querying ENA and SRA, exiting...")
-            logging.error(f"STATUS: {ena_data[0]}")
-            logging.error(f"TEXT: {ena_data[1]}")
-            sys.exit(1)
+
+    if only_provider:
+        logging.debug(f"--only-provider supplied, limiting queries to {provider}")
+        if provider.lower() == "ena":
+            success, ena_data = get_ena_metadata(query)
+            if success:
+                return ENA, ena_data
+            else:
+                logging.error("There was an issue querying ENA, exiting...")
+                logging.error(f"STATUS: {ena_data[0]}")
+                logging.error(f"TEXT: {ena_data[1]}")
+                sys.exit(1)
         else:
-            return SRA, sra_data
+            success, sra_data = get_sra_metadata(accession)
+            if success:
+                return SRA, sra_data
+            else:
+                logging.error("There was an issue querying SRA, exiting...")
+                sys.exit(1)
+    else:
+        success, ena_data = get_ena_metadata(query)
+        if success:
+            return ENA, ena_data
+        else:
+            logging.debug("Failed to get metadata from ENA. Trying SRA...")
+            success, sra_data = get_sra_metadata(accession)
+            if not success:
+                logging.error("There was an issue querying ENA and SRA, exiting...")
+                logging.error(f"STATUS: {ena_data[0]}")
+                logging.error(f"TEXT: {ena_data[1]}")
+                sys.exit(1)
+            else:
+                return SRA, sra_data
 
 
 def write_tsv(data: dict, output: str) -> None:
@@ -549,7 +583,7 @@ def validate_query(query: str) -> str:
 @click.option(
     "--only-download-metadata",
     is_flag=True,
-    help="Download metadata only.",
+    help="Skip FASTQ downloads, and retrieve only the metadata.",
 )
 @click.option(
     "--cpus",
@@ -590,16 +624,22 @@ def fastqdl(
     )
     # Start Download Process
     query = validate_query(accession)
-    data_from, ena_data = get_run_info(accession, query)
+    data_from, ena_data = get_run_info(accession, query, provider, only_provider)
 
     logging.info(f"Query: {accession}")
     logging.info(f"Archive: {provider}")
-    logging.info(f"Total Runs To Download: {len(ena_data)}")
+    if only_download_metadata:
+        logging.info(f"Total Runs Found: {len(ena_data)}")
+        logging.debug("--only-download-metadata used, skipping FASTQ downloads")
+    else:
+        logging.info(f"Total Runs To Download: {len(ena_data)}")
     downloaded = {}
     runs = {} if group_by_experiment or group_by_sample else None
     outdir = Path.cwd() if outdir == "./" else f"{outdir}"
 
     if only_download_metadata:
+        Path(outdir).mkdir(parents=True, exist_ok=True)
+        logging.info(f"Writing metadata to {outdir}/{prefix}-run-info.tsv")
         write_tsv(ena_data, f"{outdir}/{prefix}-run-info.tsv")
     else:
         for i, run_info in enumerate(ena_data):
@@ -613,11 +653,9 @@ def fastqdl(
                 continue
             logging.info(f"\tWorking on run {run_acc}...")
             fastqs = None
-            if provider == "ena" and data_from == ENA:
+            if provider.lower() == "ena" and data_from == ENA:
                 fastqs = ena_download(
-                    run_info,
-                    outdir,
-                    max_attempts=max_attempts,
+                    run_info, outdir, max_attempts=max_attempts, force=force
                 )
 
                 if fastqs == ENA_FAILED:
@@ -656,9 +694,7 @@ def fastqdl(
                         # Retry download from ENA
                         logging.info(f"\t{run_acc} not found on SRA, retrying from ENA")
                         fastqs = ena_download(
-                            run_info,
-                            outdir,
-                            max_attempts=max_attempts,
+                            run_info, outdir, max_attempts=max_attempts, force=force
                         )
                         if fastqs == ENA_FAILED:
                             logging.error(f"\tNo fastqs found in ENA for {run_acc}")
@@ -696,7 +732,11 @@ def fastqdl(
                 else:
                     logging.info("\tMerging single end runs to experiment...")
                     merge_runs(vals["r1"], f"{outdir}/{name}.fastq.gz")
+            logging.info(
+                f"Writing merged run info to {outdir}/{prefix}-run-mergers.tsv"
+            )
             write_tsv(runs, f"{outdir}/{prefix}-run-mergers.tsv")
+        logging.info(f"Writing metadata to {outdir}/{prefix}-run-info.tsv")
         write_tsv(ena_data, f"{outdir}/{prefix}-run-info.tsv")
 
 

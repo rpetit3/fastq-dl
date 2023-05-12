@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2]
+
+### Added
+
+- `--only-download-metadata` to skip FASTQ downloads, and retrieve only the associated metadata @alienzj
+- fallback on SRA for metadata retrieval @gtonkinhill
+- include `prefetch`for SRA downloads @gtonkinhill
+- added `--force` to overwrite existing downloads @gtonkinhill
+- update github actions
+
+[2.0.2]: https://github.com/rpetit3/fastq-dl/compare/v2.0.1...v2.0.2
+
 ## [2.0.1]
 
 ### Fixed
