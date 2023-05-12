@@ -4,7 +4,9 @@ version = "2.0.2"
 description = "Download FASTQ files from SRA or ENA repositories."
 authors = [
     "Robert A. Petit III <robbie.petit@gmail.com>",
-    "Michael B. Hall <michael@mbh.sh>"
+    "Michael B. Hall <michael@mbh.sh>",
+    "Gerry Tonkin-Hill",
+    "Jie Zhu"
 ]
 license = "MIT"
 readme = "README.md"
