@@ -28,7 +28,9 @@ click.rich_click.OPTION_GROUPS = {
                 "--prefix",
                 "--cpus",
                 "--max-attempts",
+                "--force",
                 "--only-provider",
+                "--only-download-metadata",
                 "--silent",
                 "--version",
                 "--verbose",
@@ -39,7 +41,7 @@ click.rich_click.OPTION_GROUPS = {
 }
 
 PROGRAM = "fastq-dl"
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 ENA_FAILED = "ENA_NOT_FOUND"
 SRA_FAILED = "SRA_NOT_FOUND"
 SRA = "SRA"
@@ -94,7 +96,7 @@ def execute(
                 return command.decoded_stdout
             else:
                 return command.returncode
-        except ExternalCommandFailed as error:
+        except ExternalCommandFailed:
             logging.error(f'"{cmd}" return exit code {command.returncode}')
 
             if is_sra and command.returncode == 3:
@@ -107,11 +109,18 @@ def execute(
                 logging.error(f"Retry execution ({attempt} of {max_attempts})")
                 time.sleep(10)
             else:
-                raise error
+                if is_sra:
+                    return SRA_FAILED
+                else:
+                    return ENA_FAILED
 
 
 def sra_download(
-    accession: str, outdir: str, cpus: int = 1, max_attempts: int = 10
+    accession: str,
+    outdir: str,
+    cpus: int = 1,
+    max_attempts: int = 10,
+    force: bool = False,
 ) -> dict:
     """Download FASTQs from SRA using fasterq-dump.
 
@@ -126,39 +135,77 @@ def sra_download(
     """
     fastqs = {"r1": "", "r2": "", "single_end": True}
     se = f"{outdir}/{accession}.fastq.gz"
-    pe = f"{outdir}/{accession}_2.fastq.gz"
+    pe1 = f"{outdir}/{accession}_1.fastq.gz"
+    pe2 = f"{outdir}/{accession}_2.fastq.gz"
 
-    if not Path(se).exists() and not Path(pe).exists():
+    # remove existing files if force is selected.
+    # TODO: only remove if the MD5 checksum is different.
+    if force and Path(se).exists():
+        Path(se).unlink()
+        logging.warning(f"Overwriting existing file: {se}")
+    if force and Path(pe1).exists() and Path(pe2).exists():
+        Path(pe1).unlink()
+        Path(pe2).unlink()
+        logging.warning(f"Overwriting existing file: {pe1}")
+        logging.warning(f"Overwriting existing file: {pe2}")
+
+    if not Path(se).exists() and not (Path(pe1).exists() and Path(pe2).exists()):
         Path(outdir).mkdir(parents=True, exist_ok=True)
+
+        # TODO: add check of read count as a proxy for checksum?
         outcome = execute(
-            f"fasterq-dump {accession} --split-files --threads {cpus}",
+            f"prefetch {accession} --max-size 10T -o {accession}.sra",
             max_attempts=max_attempts,
             directory=outdir,
             is_sra=True,
         )
+
+        if outcome == SRA_FAILED:
+            return outcome
+        else:
+            outcome = execute(
+                f"fasterq-dump {accession} --split-3 --mem 1G --threads {cpus}",
+                max_attempts=max_attempts,
+                directory=outdir,
+                is_sra=True,
+            )
+
         if outcome == SRA_FAILED:
             return outcome
         else:
             execute(f"pigz --force -p {cpus} -n {accession}*.fastq", directory=outdir)
+            Path(f"{outdir}/{accession}.sra").unlink()
+    else:
+        if Path(se).exists():
+            logging.debug(f"Skipping re-download of existing file: {se}")
+        elif Path(pe1).exists() and Path(pe2).exists():
+            logging.debug(f"Skipping re-download of existing file: {pe1}")
+            logging.debug(f"Skipping re-download of existing file: {pe2}")
 
     if Path(f"{outdir}/{accession}_2.fastq.gz").exists():
         # Paired end
         fastqs["r1"] = f"{outdir}/{accession}_1.fastq.gz"
         fastqs["r2"] = f"{outdir}/{accession}_2.fastq.gz"
-        fastqs["single_end"] = False
+        if Path(f"{outdir}/{accession}.fastq.gz").exists():
+            fastqs["single_end"] = f"{outdir}/{accession}.fastq.gz"
+        else:
+            fastqs["single_end"] = False
     else:
         fastqs["r1"] = f"{outdir}/{accession}.fastq.gz"
 
     return fastqs
 
 
-def ena_download(run: str, outdir: str, max_attempts: int = 10) -> dict:
+def ena_download(
+    run: str, outdir: str, max_attempts: int = 10, force: bool = False
+) -> dict:
     """Download FASTQs from ENA FTP using wget.
 
     Args:
         accession (str): The accession to download associated FASTQs.
         outdir (str): Directory to write FASTQs to.
         max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.
+        force: (bool, optional): Whether to overwrite existing files if the MD5's do not match
 
     Returns:
         dict: A dictionary of the FASTQs and their paired status.
@@ -194,11 +241,10 @@ def ena_download(run: str, outdir: str, max_attempts: int = 10) -> dict:
         # Download Run
         if md5[i]:
             fastq = download_ena_fastq(
-                ftp[i],
-                outdir,
-                md5[i],
-                max_attempts=max_attempts,
+                ftp[i], outdir, md5[i], max_attempts=max_attempts, force=force
             )
+            if fastq == ENA_FAILED:
+                return ENA_FAILED
 
             if is_r2:
                 fastqs["r2"] = fastq
@@ -238,6 +284,7 @@ def download_ena_fastq(
     outdir: str,
     md5: str,
     max_attempts: int = 10,
+    force: bool = False,
 ) -> str:
     """Download FASTQs from ENA using FTP.
 
@@ -246,6 +293,7 @@ def download_ena_fastq(
         outdir (str): Directory to download the FASTQ to.
         md5 (str): Expected MD5 checksum of the FASTQ.
         max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.
+        force: (bool, optional): Whether to overwrite existing files if the MD5's do not match
 
     Returns:
         str: Path to the downloaded FASTQ.
@@ -254,30 +302,44 @@ def download_ena_fastq(
     attempt = 0
     fastq = f"{outdir}/{Path(ftp).name}"
 
+    if Path(fastq).exists() and force:
+        logging.warning(f"Overwriting existing file: {fastq}")
+        Path(fastq).unlink()
+
     if not Path(fastq).exists():
         Path(outdir).mkdir(parents=True, exist_ok=True)
 
         while not success:
             logging.info(f"\t\t{Path(ftp).name} FTP download attempt {attempt + 1}")
-            execute(f"wget --quiet -O {fastq} ftp://{ftp}", max_attempts=max_attempts)
+            outcome = execute(
+                f"wget --quiet -O {fastq} ftp://{ftp}", max_attempts=max_attempts
+            )
+            if outcome == ENA_FAILED:
+                return ENA_FAILED
 
-            fastq_md5 = md5sum(fastq)
-            if fastq_md5 != md5:
-                logging.debug(f"MD5s, Observed: {fastq_md5}, Expected: {md5}")
-                attempt += 1
-                if Path(fastq).exists():
-                    Path(fastq).unlink()
-                if attempt > max_attempts:
-                    logging.error(
-                        f"Download failed after {max_attempts} attempts. "
-                        "Please try again later or manually from SRA/ENA."
-                    )
-                    sys.exit(1)
-
-                # Hiccup? Wait a bit before trying again.
-                time.sleep(10)
-            else:
+            if force:
+                logging.debug(f"--force used, skipping MD5sum check for {fastq}")
                 success = True
+            else:
+                fastq_md5 = md5sum(fastq)
+                if fastq_md5 != md5:
+                    logging.debug(f"MD5s, Observed: {fastq_md5}, Expected: {md5}")
+                    attempt += 1
+                    if Path(fastq).exists():
+                        Path(fastq).unlink()
+                    if attempt > max_attempts:
+                        logging.error(
+                            f"Download failed after {max_attempts} attempts. "
+                            "Please try again later or manually from SRA/ENA."
+                        )
+                        sys.exit(1)
+
+                    # Hiccup? Wait a bit before trying again.
+                    time.sleep(10)
+                else:
+                    success = True
+    else:
+        logging.debug(f"Skipping re-download of existing file: {fastq}")
 
     return fastq
 
@@ -345,7 +407,9 @@ def get_ena_metadata(query: str) -> list:
         return [False, [r.status_code, r.text]]
 
 
-def get_run_info(accession: str, query: str) -> tuple:
+def get_run_info(
+    accession: str, query: str, provider: str, only_provider: bool
+) -> tuple:
     """Retrieve a list of samples available from ENA.
 
     The first attempt will be against ENA, and if that fails, SRA will be queried. This should
@@ -354,25 +418,47 @@ def get_run_info(accession: str, query: str) -> tuple:
     Args:
         accession (str): The accession to search for.
         query (str): A formatted query for ENA searches.
+        provider (str): Limit queries only to the specified provider (requires only_provider be true)
+        only_provider (bool): If true, limit queries to the specified provider
 
     Returns:
         tuple: Records associated with the accession.
     """
 
     logging.debug("Querying ENA for metadata...")
-    success, ena_data = get_ena_metadata(query)
-    if success:
-        return ENA, ena_data
-    else:
-        logging.debug("Failed to get metadata from ENA. Trying SRA...")
-        success, sra_data = get_sra_metadata(accession)
-        if not success:
-            logging.error("There was an issue querying ENA and SRA, exiting...")
-            logging.error(f"STATUS: {ena_data[0]}")
-            logging.error(f"TEXT: {ena_data[1]}")
-            sys.exit(1)
+
+    if only_provider:
+        logging.debug(f"--only-provider supplied, limiting queries to {provider}")
+        if provider.lower() == "ena":
+            success, ena_data = get_ena_metadata(query)
+            if success:
+                return ENA, ena_data
+            else:
+                logging.error("There was an issue querying ENA, exiting...")
+                logging.error(f"STATUS: {ena_data[0]}")
+                logging.error(f"TEXT: {ena_data[1]}")
+                sys.exit(1)
         else:
-            return SRA, sra_data
+            success, sra_data = get_sra_metadata(accession)
+            if success:
+                return SRA, sra_data
+            else:
+                logging.error("There was an issue querying SRA, exiting...")
+                sys.exit(1)
+    else:
+        success, ena_data = get_ena_metadata(query)
+        if success:
+            return ENA, ena_data
+        else:
+            logging.debug("Failed to get metadata from ENA. Trying SRA...")
+            success, sra_data = get_sra_metadata(accession)
+            if not success:
+                logging.error("There was an issue querying ENA and SRA, exiting...")
+                logging.error(f"STATUS: {ena_data[0]}")
+                logging.error(f"TEXT: {ena_data[1]}")
+                sys.exit(1)
+            else:
+                return SRA, sra_data
 
 
 def write_tsv(data: dict, output: str) -> None:
@@ -485,10 +571,19 @@ def validate_query(query: str) -> str:
     help="Maximum number of download attempts.",
 )
 @click.option(
-    "-F",
+    "--force",
+    is_flag=True,
+    help="Overwrite existing files if their MD5 checksums do not match.",
+)
+@click.option(
     "--only-provider",
     is_flag=True,
     help="Only attempt download from specified provider.",
+)
+@click.option(
+    "--only-download-metadata",
+    is_flag=True,
+    help="Skip FASTQ downloads, and retrieve only the metadata.",
 )
 @click.option(
     "--cpus",
@@ -507,7 +602,9 @@ def fastqdl(
     outdir,
     prefix,
     max_attempts,
+    force,
     only_provider,
+    only_download_metadata,
     cpus,
     silent,
     verbose,
@@ -527,109 +624,120 @@ def fastqdl(
     )
     # Start Download Process
     query = validate_query(accession)
-    data_from, ena_data = get_run_info(accession, query)
+    data_from, ena_data = get_run_info(accession, query, provider, only_provider)
 
     logging.info(f"Query: {accession}")
     logging.info(f"Archive: {provider}")
-    logging.info(f"Total Runs To Download: {len(ena_data)}")
+    if only_download_metadata:
+        logging.info(f"Total Runs Found: {len(ena_data)}")
+        logging.debug("--only-download-metadata used, skipping FASTQ downloads")
+    else:
+        logging.info(f"Total Runs To Download: {len(ena_data)}")
     downloaded = {}
     runs = {} if group_by_experiment or group_by_sample else None
     outdir = Path.cwd() if outdir == "./" else f"{outdir}"
 
-    for i, run_info in enumerate(ena_data):
-        run_acc = run_info["run_accession"]
-        if run_acc not in downloaded:
-            downloaded[run_acc] = True
-        else:
-            logging.warning(f"Duplicate run {run_acc} found, skipping re-download...")
-            continue
-        logging.info(f"\tWorking on run {run_acc}...")
-        fastqs = None
-        if provider == "ena" and data_from == ENA:
-            fastqs = ena_download(
-                run_info,
-                outdir,
-                max_attempts=max_attempts,
-            )
+    if only_download_metadata:
+        Path(outdir).mkdir(parents=True, exist_ok=True)
+        logging.info(f"Writing metadata to {outdir}/{prefix}-run-info.tsv")
+        write_tsv(ena_data, f"{outdir}/{prefix}-run-info.tsv")
+    else:
+        for i, run_info in enumerate(ena_data):
+            run_acc = run_info["run_accession"]
+            if run_acc not in downloaded:
+                downloaded[run_acc] = True
+            else:
+                logging.warning(
+                    f"Duplicate run {run_acc} found, skipping re-download..."
+                )
+                continue
+            logging.info(f"\tWorking on run {run_acc}...")
+            fastqs = None
+            if provider.lower() == "ena" and data_from == ENA:
+                fastqs = ena_download(
+                    run_info, outdir, max_attempts=max_attempts, force=force
+                )
 
-            if fastqs == ENA_FAILED:
-                if only_provider:
-                    logging.error(f"\tNo fastqs found in ENA for {run_acc}")
-                    ena_data[i]["error"] = ENA_FAILED
-                    fastqs = None
-                else:
-                    # Retry download from SRA
-                    logging.info(f"\t{run_acc} not found on ENA, retrying from SRA")
-
-                    fastqs = sra_download(
-                        run_acc,
-                        outdir,
-                        cpus=cpus,
-                        max_attempts=max_attempts,
-                    )
-                    if fastqs == SRA_FAILED:
-                        logging.error(f"\t{run_acc} not found on SRA")
-                        ena_data[i]["error"] = f"{ENA_FAILED}&{SRA_FAILED}"
-                        fastqs = None
-
-        else:
-            fastqs = sra_download(
-                run_acc,
-                outdir,
-                cpus=cpus,
-                max_attempts=max_attempts,
-            )
-            if fastqs == SRA_FAILED:
-                if only_provider or data_from == SRA:
-                    logging.error(f"\t{run_acc} not found on SRA or ENA")
-                    ena_data[i]["error"] = SRA_FAILED
-                    fastqs = None
-                else:
-                    # Retry download from ENA
-                    logging.info(f"\t{run_acc} not found on SRA, retrying from ENA")
-                    fastqs = ena_download(
-                        run_info,
-                        outdir,
-                        max_attempts=max_attempts,
-                    )
-                    if fastqs == ENA_FAILED:
+                if fastqs == ENA_FAILED:
+                    if only_provider:
                         logging.error(f"\tNo fastqs found in ENA for {run_acc}")
-                        ena_data[i]["error"] = f"{SRA_FAILED}&{ENA_FAILED}"
+                        ena_data[i]["error"] = ENA_FAILED
                         fastqs = None
+                    else:
+                        # Retry download from SRA
+                        logging.info(f"\t{run_acc} not found on ENA, retrying from SRA")
 
-        # Add the download results
-        if fastqs:
-            if group_by_experiment or group_by_sample:
-                name = run_info["sample_accession"]
-                if group_by_experiment:
-                    name = run_info["experiment_accession"]
+                        fastqs = sra_download(
+                            run_acc,
+                            outdir,
+                            cpus=cpus,
+                            max_attempts=max_attempts,
+                        )
+                        if fastqs == SRA_FAILED:
+                            logging.error(f"\t{run_acc} not found on SRA")
+                            ena_data[i]["error"] = f"{ENA_FAILED}&{SRA_FAILED}"
+                            fastqs = None
 
-                if name not in runs:
-                    runs[name] = {"r1": [], "r2": []}
+            else:
+                fastqs = sra_download(
+                    run_acc,
+                    outdir,
+                    cpus=cpus,
+                    max_attempts=max_attempts,
+                )
+                if fastqs == SRA_FAILED:
+                    if only_provider or data_from == SRA:
+                        logging.error(f"\t{run_acc} not found on SRA or ENA")
+                        ena_data[i]["error"] = SRA_FAILED
+                        fastqs = None
+                    else:
+                        # Retry download from ENA
+                        logging.info(f"\t{run_acc} not found on SRA, retrying from ENA")
+                        fastqs = ena_download(
+                            run_info, outdir, max_attempts=max_attempts, force=force
+                        )
+                        if fastqs == ENA_FAILED:
+                            logging.error(f"\tNo fastqs found in ENA for {run_acc}")
+                            ena_data[i]["error"] = f"{SRA_FAILED}&{ENA_FAILED}"
+                            fastqs = None
 
-                if fastqs["single_end"]:
-                    runs[name]["r1"].append(fastqs["r1"])
-                else:
-                    runs[name]["r1"].append(fastqs["r1"])
-                    runs[name]["r2"].append(fastqs["r2"])
+            # Add the download results
+            if fastqs:
+                if group_by_experiment or group_by_sample:
+                    name = run_info["sample_accession"]
+                    if group_by_experiment:
+                        name = run_info["experiment_accession"]
 
-    # If applicable, merge runs
-    if runs:
-        for name, vals in runs.items():
-            if len(vals["r1"]) and len(vals["r2"]):
-                # Not all runs labeled as paired are actually paired.
-                if len(vals["r1"]) == len(vals["r2"]):
-                    logging.info(f"\tMerging paired end runs to {name}...")
-                    merge_runs(vals["r1"], f"{outdir}/{name}_R1.fastq.gz")
-                    merge_runs(vals["r2"], f"{outdir}/{name}_R2.fastq.gz")
+                    if name not in runs:
+                        runs[name] = {"r1": [], "r2": []}
+
+                    if fastqs["single_end"]:
+                        runs[name]["r1"].append(fastqs["r1"])
+                    else:
+                        runs[name]["r1"].append(fastqs["r1"])
+                        runs[name]["r2"].append(fastqs["r2"])
+
+        # If applicable, merge runs
+        if runs:
+            for name, vals in runs.items():
+                if len(vals["r1"]) and len(vals["r2"]):
+                    # Not all runs labeled as paired are actually paired.
+                    if len(vals["r1"]) == len(vals["r2"]):
+                        logging.info(f"\tMerging paired end runs to {name}...")
+                        merge_runs(vals["r1"], f"{outdir}/{name}_R1.fastq.gz")
+                        merge_runs(vals["r2"], f"{outdir}/{name}_R2.fastq.gz")
+                    else:
+                        logging.info("\tMerging single end runs to experiment...")
+                        merge_runs(vals["r1"], f"{outdir}/{name}.fastq.gz")
                 else:
                     logging.info("\tMerging single end runs to experiment...")
                     merge_runs(vals["r1"], f"{outdir}/{name}.fastq.gz")
-            else:
-                logging.info("\tMerging single end runs to experiment...")
-                merge_runs(vals["r1"], f"{outdir}/{name}.fastq.gz")
-        write_tsv(runs, f"{outdir}/{prefix}-run-mergers.tsv")
-    write_tsv(ena_data, f"{outdir}/{prefix}-run-info.tsv")
+            logging.info(
+                f"Writing merged run info to {outdir}/{prefix}-run-mergers.tsv"
+            )
+            write_tsv(runs, f"{outdir}/{prefix}-run-mergers.tsv")
+        logging.info(f"Writing metadata to {outdir}/{prefix}-run-info.tsv")
+        write_tsv(ena_data, f"{outdir}/{prefix}-run-info.tsv")
 
 
 def main():

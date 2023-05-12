@@ -45,9 +45,17 @@ jobs:
         run: |
           fastq-dl --accession SRX1390608 --outdir test-ena --verbose
 
+      - name: Test ENA Metadata only
+        run: |
+          fastq-dl --accession SRX1390608 --outdir test-ena-metadata --verbose --only-download-metadata
+
       - name: Test SRA Download
         run: |
           fastq-dl --accession SRX1390608 --provider SRA --outdir test-sra --verbose
+
+      - name: Test SRA Metadata only
+        run: |
+          fastq-dl --accession SRX1390608 --provider SRA --outdir test-sra-metadata --verbose --only-provider --only-download-metadata
 
       - name: Test Experiment with duplicate runs
         run: |
@@ -57,9 +65,17 @@ jobs:
         run: |
           fastq-dl --accession SRX3606281 --provider SrA --outdir test-small-sra --verbose
 
+      - name: Test Small Run (SRA) with --force
+        run: |
+          fastq-dl --accession SRX3606281 --provider SrA --outdir test-small-sra --verbose --force
+
       - name: Test Small Run (ENA)
         run: |
           fastq-dl --accession SRX3606281 --outdir test-small-ena --verbose
+
+      - name: Test Small Run (ENA) with --force
+        run: |
+          fastq-dl --accession SRX3606281 --outdir test-small-ena --verbose --force
 
       - name: Test BioSample (ENA)
         run: |
