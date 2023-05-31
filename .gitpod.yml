@@ -1,4 +1,4 @@
-image: condaforge/mambaforge:22.9.0-3
+image: condaforge/mambaforge:23.1.0-1
 
 tasks:
   - name: Initialize
@@ -27,5 +27,4 @@ vscode:
     - streetsidesoftware.code-spell-checker  # Spelling checker for source code
     - ms-python.black-formatter              # Support for Python Black formatter
     - njpwerner.autodocstring                # Use type hints to auto create doc strings
-    - github.copilot                         # Load up Copilot
     - ms-python.python                       # Syntax and linting
