@@ -6,7 +6,8 @@ authors = [
     "Robert A. Petit III <robbie.petit@gmail.com>",
     "Michael B. Hall <michael@mbh.sh>",
     "Gerry Tonkin-Hill",
-    "Jie Zhu"
+    "Jie Zhu",
+    "Timothy D. Read"
 ]
 license = "MIT"
 readme = "README.md"
@@ -19,7 +20,7 @@ fastq-dl = "fastq_dl.fastq_dl:main"
 
 [tool.poetry.dependencies]
 python = "^3.7.1"
-requests = "^2.28.2"
+requests = "^2.31.0"
 pysradb = "^1.4"
 rich-click = "^1.6.1"
 executor = "^23.2"
