@@ -21,7 +21,7 @@ authors:
     orcid: 0000-0001-8966-9680
     affiliation: "2"
 affiliations:
-  - name: Wyoming Public Health Laboratory, Wyoming Department of Health, Wyoming, USA
+  - name: Wyoming Public Health Laboratory, Wyoming Department of Health, Cheyenne, Wyoming, USA
     index: 1
   - name: Division of Infectious Diseases, Department of Medicine, Emory University School of Medicine, Atlanta, Georgia, USA
     index: 2
