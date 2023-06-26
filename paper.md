@@ -37,13 +37,23 @@ bibliography: paper.bib
 
 # Summary
 
+fastq-dl is a convenient bioinformatic tool that simplifies the process of retrieving FASTQ files
+from ENA and SRA. It was developed to be easy to use and accessible to researchers from all
+backgrounds. By facilitating efficient downloading of publicly available FASTQ files, users can
+easily integrate these data into their own research. fastq-dl is available from PyPI and Bioconda
+for simple installation, and the source code is available at https://github.com/rpetit3/fastq-dl.  
+
+# Statement of Need
+
 High-throughput sequencing technologies have revolutionized the field of genomics, enabling
 researchers to generate vast amounts of data quickly and at relatively low cost. The European
 Nucleotide Archive (ENA) [@Burgin_2023] and the Sequence Read Archive (SRA) [@Katz_2022] are
 two major repositories for publicly hosting next-generation sequencing data from many research
 projects. Retrieving sequences from these repositories is often a multi-step process and
 difficult for researchers who lack experience with bioinformatics. fastq-dl is a bioinformatic
-tool that simplifies the process of downloading sequences from SRA and ENA.
+tool that simplifies this process of downloading sequences from SRA and ENA.
+
+# Implementation
 
 fastq-dl is written in Python and is designed to be user-friendly and simple to use. Users can
 submit queries to the ENA, via a REST API [@Burgin_2023], or SRA, via pysradb [@Choudhary_2019],
@@ -57,12 +67,6 @@ In the event a repository is unresponsive, download attempts will be made agains
 repository. When an Experiment or BioSample has multiple Run accessions associated with it,
 users can optionally choose to merge these Run accessions. Upon completion, users are provided
 with a summary file, a metadata file and FASTQ files per-query hit.
-
-fastq-dl is a convenient bioinformatic tool that simplifies the process of retrieving FASTQ files
-from ENA and SRA. It was developed to be easy to use and accessible to researchers from all
-backgrounds. By facilitating efficient downloading of publicly available FASTQ files, users can
-easily integrate these data into their own research. fastq-dl is available from PyPI and Bioconda
-for simple installation, and the source code is available at https://github.com/rpetit3/fastq-dl.  
 
 # Funding
 
