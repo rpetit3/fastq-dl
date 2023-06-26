@@ -382,7 +382,6 @@ def get_sra_metadata(query: str) -> list:
         list: Records associated with the accession.
     """
     #
-    return [False, []]
     db = SRAweb()
     df = db.search_sra(
         query, detailed=True, sample_attribute=True, expand_sample_attributes=True
