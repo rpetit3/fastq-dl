@@ -29,9 +29,11 @@ click.rich_click.OPTION_GROUPS = {
                 "--cpus",
                 "--max-attempts",
                 "--force",
+                "--sra-lite",
                 "--only-provider",
                 "--only-download-metadata",
                 "--silent",
+                "--sleep",
                 "--version",
                 "--verbose",
                 "--help",
@@ -124,6 +126,7 @@ def sra_download(
     max_attempts: int = 10,
     force: bool = False,
     sleep: int = 10,
+    sra_lite: bool = False,
 ) -> dict:
     """Download FASTQs from SRA using fasterq-dump.
 
@@ -132,6 +135,9 @@ def sra_download(
         outdir (str): Directory to write FASTQs to.
         cpus (int, optional): Number of CPUs to use. Defaults to 1.
         max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.
+        force (bool, optional): Force overwrite of existing files
+        sleep (int, default = 10): Amount of seconds to sleep in between attempts
+        sra_lite (bool, optional): If True, prefer SRA Lite downloads
 
     Returns:
         dict: A dictionary of the FASTQs and their paired status.
@@ -154,6 +160,15 @@ def sra_download(
 
     if not Path(se).exists() and not (Path(pe1).exists() and Path(pe2).exists()):
         Path(outdir).mkdir(parents=True, exist_ok=True)
+
+        if sra_lite:
+            # Prefer SRA Lite
+            logging.debug("Setting preference to SRA Lite")
+            execute("vdb-config --simplified-quality-scores yes")
+        else:
+            # Prefer SRA Normalized
+            logging.debug("Setting preference to SRA Normalized")
+            execute("vdb-config --simplified-quality-scores no")
 
         # TODO: add check of read count as a proxy for checksum?
         outcome = execute(
@@ -641,6 +656,11 @@ def validate_query(query: str) -> str:
     help="Overwrite existing files if their MD5 checksums do not match.",
 )
 @click.option(
+    "--sra-lite",
+    is_flag=True,
+    help="Set preference to SRA Lite",
+)
+@click.option(
     "--only-provider",
     is_flag=True,
     help="Only attempt download from specified provider.",
@@ -669,6 +689,7 @@ def fastqdl(
     max_attempts,
     sleep,
     force,
+    sra_lite,
     only_provider,
     only_download_metadata,
     cpus,
@@ -750,6 +771,7 @@ def fastqdl(
                             cpus=cpus,
                             max_attempts=max_attempts,
                             sleep=sleep,
+                            sra_lite=sra_lite,
                         )
                         if fastqs == SRA_FAILED:
                             logging.error(f"\t{run_acc} not found on SRA")
@@ -762,6 +784,7 @@ def fastqdl(
                     cpus=cpus,
                     max_attempts=max_attempts,
                     sleep=sleep,
+                    sra_lite=sra_lite,
                 )
                 if fastqs == SRA_FAILED:
                     if only_provider or data_from == SRA:
@@ -823,7 +846,10 @@ def fastqdl(
 
 
 def main():
-    fastqdl()
+    if len(sys.argv) == 1:
+        fastqdl(["--help"])
+    else:
+        fastqdl()
 
 
 if __name__ == "__main__":

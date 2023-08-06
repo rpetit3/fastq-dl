@@ -31,33 +31,39 @@ conda activate fastq-dl
 
 ```{bash}
 fastq-dl --help
-                                                                                          
- Usage: fastq-dl [OPTIONS]                                                                
-                                                                                          
- Download FASTQ files from ENA or SRA.                                                    
-                                                                                          
-╭─ Required Options ─────────────────────────────────────────────────────────────────────╮
-│ *  --accession  -a  TEXT  ENA/SRA accession to query. (Study, Sample, Experiment, Run  │
-│                           accession) [required]                                        │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Additional Options ───────────────────────────────────────────────────────────────────╮
-│ --provider                 [ena|sra]  Specify which provider (ENA or SRA) to use.      │
-│                                       [default: ena]                                   │
-│ --group-by-experiment                 Group Runs by experiment accession.              │
-│ --group-by-sample                     Group Runs by sample accession.                  │
-│ --outdir               -o  TEXT       Directory to output downloads to. [default: ./]  │
-│ --prefix                   TEXT       Prefix to use for naming log files.              │
-│                                       [default: fastq]                                 │
-│ --cpus                     INTEGER    Total cpus used for downloading from SRA.        │
-│                                       [default: 1]                                     │
-│ --max-attempts         -m  INTEGER    Maximum number of download attempts.             │
-│                                       [default: 10]                                    │
-│ --only-provider        -F             Only attempt download from specified provider.   │
-│ --silent                              Only critical errors will be printed.            │
-│ --version              -V             Show the version and exit.                       │
-│ --verbose              -v             Print debug related text.                        │
-│ --help                 -h             Show this message and exit.                      │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+
+ Usage: fastq-dl [OPTIONS]                                                                        
+                                                                                                  
+ Download FASTQ files from ENA or SRA.                                                            
+                                                                                                  
+╭─ Required Options ─────────────────────────────────────────────────────────────────────────────╮
+│ *  --accession  -a  TEXT  ENA/SRA accession to query. (Study, Sample, Experiment, Run          │
+│                           accession)                                                           │
+│                           [required]                                                           │
+╰────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Additional Options ───────────────────────────────────────────────────────────────────────────╮
+│ --provider                    [ena|sra]  Specify which provider (ENA or SRA) to use.           │
+│                                          [default: ena]                                        │
+│ --group-by-experiment                    Group Runs by experiment accession.                   │
+│ --group-by-sample                        Group Runs by sample accession.                       │
+│ --outdir                  -o  TEXT       Directory to output downloads to. [default: ./]       │
+│ --prefix                      TEXT       Prefix to use for naming log files. [default: fastq]  │
+│ --cpus                        INTEGER    Total cpus used for downloading from SRA.             │
+│                                          [default: 1]                                          │
+│ --max-attempts            -m  INTEGER    Maximum number of download attempts. [default: 10]    │
+│ --force                                  Overwrite existing files if their MD5 checksums do    │
+│                                          not match.                                            │
+│ --sra-lite                               Set preference to SRA Lite                            │
+│ --only-provider                          Only attempt download from specified provider.        │
+│ --only-download-metadata                 Skip FASTQ downloads, and retrieve only the metadata. │
+│ --silent                                 Only critical errors will be printed.                 │
+│ --sleep                   -s  INTEGER    Minimum amount of time to sleep between retries (API  │
+│                                          query and download)                                   │
+│                                          [default: 10]                                         │
+│ --version                 -V             Show the version and exit.                            │
+│ --verbose                 -v             Print debug related text.                             │
+│ --help                    -h             Show this message and exit.                           │
+╰────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 *fastq-dl* requires a single ENA/SRA Study, Sample, Experiment, or Run accession and FASTQs
@@ -102,6 +108,14 @@ original provider, no additional attempts will be made.
 There maybe times you might want to group Run accessions based on a Experiment or Sample
 accessions. This will merge FASTQs associated with a Run accession based its associated
 Experiment accession (`--group-by-experiment`) or Sample accession (`--group-by-sample`).
+
+### --sra-lite
+
+Downloads from SRA are provided in [SRA Normalized and SRA Lite](https://www.ncbi.nlm.nih.gov/sra/docs/sra-data-formats/) formats.
+SRA Normalized is the original format with full base quality scores and SRA Lite are smaller
+due to simplifying the quality scores to a uniform Q30. By default the preference will be
+set to SRA Normalized, if you prefer SRA Lite you can use `--sra-lite` to set the
+preference to SRA Lite.
 
 ## Output Files
 

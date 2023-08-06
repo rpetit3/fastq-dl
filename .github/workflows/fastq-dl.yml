@@ -92,3 +92,7 @@ jobs:
       - name: Test --group-by-experiment (SRA)
         run: |
           fastq-dl --accession ERX012546 --outdir test-group-by-experiment --verbose --group-by-sample
+
+      - name: Test --group-by-experiment (SRA Lite)
+        run: |
+          fastq-dl --accession ERX012546 --outdir test-group-by-experiment-lite --verbose --group-by-sample --sra-lite
