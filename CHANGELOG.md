@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--sra-lite` to prefer SRA Lite downloads from SRA
 - print usage on empty options
 
+[2.0.3]: https://github.com/rpetit3/fastq-dl/compare/v2.0.2...v2.0.3
+
 ## [2.0.2]
 
 ### Added
