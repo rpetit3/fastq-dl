@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastq-dl"
-version = "2.0.3"
+version = "2.0.4"
 description = "Download FASTQ files from SRA or ENA repositories."
 authors = [
     "Robert A. Petit III <robbie.petit@gmail.com>",

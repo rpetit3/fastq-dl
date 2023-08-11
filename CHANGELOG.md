@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.4]
+
+### Fixed
+
+- mismatch in `--version` output
+
+
+[2.0.4]: https://github.com/rpetit3/fastq-dl/compare/v2.0.3...v2.0.4
+
 ## [2.0.3]
 
 ### Added
