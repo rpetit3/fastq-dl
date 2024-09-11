@@ -22,12 +22,12 @@ def md5sum(fastq: PathLike) -> Optional[str]:
         str: Calculated MD5 checksum.
     """
     fastq = Path(fastq)
-    MB = 1_048_576
-    BUFFER_SIZE = 10 * MB
+    megabyte = 1_048_576
+    buffer_size = 10 * megabyte
     if fastq.exists():
         hash_md5 = hashlib.md5()
         with open(fastq, "rb") as fp:
-            for chunk in iter(lambda: fp.read(BUFFER_SIZE), b""):
+            for chunk in iter(lambda: fp.read(buffer_size), b""):
                 hash_md5.update(chunk)
 
         return hash_md5.hexdigest()
