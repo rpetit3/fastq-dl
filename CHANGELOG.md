@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--ignore` to ignore MD5 checksums
+
+### Changed
+
+- (**BREAKING**) the `--force` flag now overwrites existing files, but will check the MD5 checksums of the downloaded files. Previously, it would force download the file, but ignore the MD5 as well. See https://github.com/rpetit3/fastq-dl/issues/21#issuecomment-2190686184 for more details. Use the newly added `--ignore` flag to ignore MD5 checksums too.
+
 ## [2.0.4]
 
 ### Fixed

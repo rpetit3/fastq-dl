@@ -1,18 +1,15 @@
 #! /usr/bin/env python3
-import csv
-import hashlib
 import logging
-import re
 import sys
-import time
 from pathlib import Path
 
-import requests
 import rich
 import rich_click as click
-from executor import ExternalCommand, ExternalCommandFailed
-from pysradb import SRAweb
 from rich.logging import RichHandler
+
+from fastq_dl import ENA, ENA_FAILED, SRA, SRA_FAILED, VERSION
+from fastq_dl.download import ena_download, get_run_info, sra_download
+from fastq_dl.utils import merge_runs, validate_query, write_tsv
 
 click.rich_click.USE_RICH_MARKUP = True
 click.rich_click.OPTION_GROUPS = {
@@ -29,6 +26,7 @@ click.rich_click.OPTION_GROUPS = {
                 "--cpus",
                 "--max-attempts",
                 "--force",
+                "--ignore",
                 "--sra-lite",
                 "--only-provider",
                 "--only-download-metadata",
@@ -41,564 +39,6 @@ click.rich_click.OPTION_GROUPS = {
         },
     ]
 }
-
-PROGRAM = "fastq-dl"
-VERSION = "2.0.4"
-ENA_FAILED = "ENA_NOT_FOUND"
-SRA_FAILED = "SRA_NOT_FOUND"
-SRA = "SRA"
-ENA = "ENA"
-ENA_URL = "https://www.ebi.ac.uk/ena/portal/api/search?result=read_run&format=tsv"
-
-
-def execute(
-    cmd: str,
-    directory: str = str(Path.cwd()),
-    capture_stdout: bool = False,
-    stdout_file: str = None,
-    stderr_file: str = None,
-    max_attempts: int = 1,
-    is_sra: bool = False,
-    sleep: int = 10,
-) -> str:
-    """A simple wrapper around executor.
-
-    Args:
-        cmd (str): A command to execute.
-        directory (str, optional): Set the working directory for command. Defaults to str(Path.cwd()).
-        capture_stdout (bool, optional): Capture and return the STDOUT of a command. Defaults to False.
-        stdout_file (str, optional): File to write STDOUT to. Defaults to None.
-        stderr_file (str, optional): File to write STDERR to. Defaults to None.
-        max_attempts (int, optional): Maximum times to attempt command execution. Defaults to 1.
-        is_sra (bool, optional): The command is from SRA. Defaults to False.
-        sleep (int): Minimum amount of time to sleep before retry
-
-    Raises:
-        error: An unexpected error occurred.
-
-    Returns:
-        str: Exit code, accepted error message, or STDOUT of command.
-    """
-    attempt = 0
-    while attempt < max_attempts:
-        attempt += 1
-        try:
-            command = ExternalCommand(
-                cmd,
-                directory=directory,
-                capture=True,
-                capture_stderr=True,
-                stdout_file=stdout_file,
-                stderr_file=stderr_file,
-            )
-
-            command.start()
-            logging.debug(command.decoded_stdout)
-            logging.debug(command.decoded_stderr)
-
-            if capture_stdout:
-                return command.decoded_stdout
-            else:
-                return command.returncode
-        except ExternalCommandFailed:
-            logging.error(f'"{cmd}" return exit code {command.returncode}')
-
-            if is_sra and command.returncode == 3:
-                # The FASTQ isn't on SRA for some reason, try to download from ENA
-                error_msg = command.decoded_stderr.split("\n")[0]
-                logging.error(error_msg)
-                return SRA_FAILED
-
-            if attempt < max_attempts:
-                logging.error(f"Retry execution ({attempt} of {max_attempts})")
-                time.sleep(sleep)
-            else:
-                if is_sra:
-                    return SRA_FAILED
-                else:
-                    return ENA_FAILED
-
-
-def sra_download(
-    accession: str,
-    outdir: str,
-    cpus: int = 1,
-    max_attempts: int = 10,
-    force: bool = False,
-    sleep: int = 10,
-    sra_lite: bool = False,
-) -> dict:
-    """Download FASTQs from SRA using fasterq-dump.
-
-    Args:
-        accession (str): The accession to download associated FASTQs.
-        outdir (str): Directory to write FASTQs to.
-        cpus (int, optional): Number of CPUs to use. Defaults to 1.
-        max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.
-        force (bool, optional): Force overwrite of existing files
-        sleep (int, default = 10): Amount of seconds to sleep in between attempts
-        sra_lite (bool, optional): If True, prefer SRA Lite downloads
-
-    Returns:
-        dict: A dictionary of the FASTQs and their paired status.
-    """
-    fastqs = {"r1": "", "r2": "", "single_end": True}
-    se = f"{outdir}/{accession}.fastq.gz"
-    pe1 = f"{outdir}/{accession}_1.fastq.gz"
-    pe2 = f"{outdir}/{accession}_2.fastq.gz"
-
-    # remove existing files if force is selected.
-    # TODO: only remove if the MD5 checksum is different.
-    if force and Path(se).exists():
-        Path(se).unlink()
-        logging.warning(f"Overwriting existing file: {se}")
-    if force and Path(pe1).exists() and Path(pe2).exists():
-        Path(pe1).unlink()
-        Path(pe2).unlink()
-        logging.warning(f"Overwriting existing file: {pe1}")
-        logging.warning(f"Overwriting existing file: {pe2}")
-
-    if not Path(se).exists() and not (Path(pe1).exists() and Path(pe2).exists()):
-        Path(outdir).mkdir(parents=True, exist_ok=True)
-
-        if sra_lite:
-            # Prefer SRA Lite
-            logging.debug("Setting preference to SRA Lite")
-            execute("vdb-config --simplified-quality-scores yes")
-        else:
-            # Prefer SRA Normalized
-            logging.debug("Setting preference to SRA Normalized")
-            execute("vdb-config --simplified-quality-scores no")
-
-        # TODO: add check of read count as a proxy for checksum?
-        outcome = execute(
-            f"prefetch {accession} --max-size 10T -o {accession}.sra",
-            max_attempts=max_attempts,
-            directory=outdir,
-            is_sra=True,
-            sleep=sleep,
-        )
-
-        if outcome == SRA_FAILED:
-            return outcome
-        else:
-            outcome = execute(
-                f"fasterq-dump {accession} --split-3 --mem 1G --threads {cpus}",
-                max_attempts=max_attempts,
-                directory=outdir,
-                is_sra=True,
-                sleep=sleep,
-            )
-
-        if outcome == SRA_FAILED:
-            return outcome
-        else:
-            execute(f"pigz --force -p {cpus} -n {accession}*.fastq", directory=outdir)
-            Path(f"{outdir}/{accession}.sra").unlink()
-    else:
-        if Path(se).exists():
-            logging.debug(f"Skipping re-download of existing file: {se}")
-        elif Path(pe1).exists() and Path(pe2).exists():
-            logging.debug(f"Skipping re-download of existing file: {pe1}")
-            logging.debug(f"Skipping re-download of existing file: {pe2}")
-
-    if Path(f"{outdir}/{accession}_2.fastq.gz").exists():
-        # Paired end
-        fastqs["r1"] = f"{outdir}/{accession}_1.fastq.gz"
-        fastqs["r2"] = f"{outdir}/{accession}_2.fastq.gz"
-        if Path(f"{outdir}/{accession}.fastq.gz").exists():
-            fastqs["single_end"] = f"{outdir}/{accession}.fastq.gz"
-        else:
-            fastqs["single_end"] = False
-    else:
-        fastqs["r1"] = f"{outdir}/{accession}.fastq.gz"
-
-    return fastqs
-
-
-def ena_download(
-    run: str, outdir: str, max_attempts: int = 10, force: bool = False, sleep: int = 10
-) -> dict:
-    """Download FASTQs from ENA FTP using wget.
-
-    Args:
-        accession (str): The accession to download associated FASTQs.
-        outdir (str): Directory to write FASTQs to.
-        max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.
-        force: (bool, optional): Whether to overwrite existing files if the MD5's do not match
-        sleep (int): Minimum amount of time to sleep before retry
-
-    Returns:
-        dict: A dictionary of the FASTQs and their paired status.
-    """
-    fastqs = {"r1": "", "r2": "", "single_end": True}
-    ftp = run["fastq_ftp"]
-    if not ftp:
-        return ENA_FAILED
-
-    ftp = ftp.split(";")
-    md5 = run["fastq_md5"].split(";")
-    for i in range(len(ftp)):
-        is_r2 = False
-        # If run is paired only include *_1.fastq and *_2.fastq, rarely a
-        # run can have 3 files.
-        # Example:ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR114/007/ERR1143237
-        if run["library_layout"] == "PAIRED":
-            if ftp[i].endswith("_2.fastq.gz"):
-                # Example: ERR1143237_2.fastq.gz
-                is_r2 = True
-            elif ftp[i].endswith("_1.fastq.gz"):
-                # Example: ERR1143237_1.fastq.gz
-                pass
-            else:
-                # Example: ERR1143237.fastq.gz
-                # Not a part of the paired end read, so skip this file. Or,
-                # its the only fastq file, and its not a paired
-                obs_fq = Path(ftp[i]).name
-                exp_fq = f'{run["run_accession"]}.fastq.gz'
-                if len(ftp) != 1 and obs_fq != exp_fq:
-                    continue
-
-        # Download Run
-        if md5[i]:
-            fastq = download_ena_fastq(
-                ftp[i],
-                outdir,
-                md5[i],
-                max_attempts=max_attempts,
-                force=force,
-                sleep=sleep,
-            )
-            if fastq == ENA_FAILED:
-                return ENA_FAILED
-
-            if is_r2:
-                fastqs["r2"] = fastq
-                fastqs["single_end"] = False
-            else:
-                fastqs["r1"] = fastq
-
-    return fastqs
-
-
-def md5sum(fastq: str) -> str:
-    """Calculate the MD5 checksum of a file.
-
-    Source: https://stackoverflow.com/a/3431838/5299417
-
-    Args:
-        fastq (str): Input FASTQ to calculate MD5 checksum for.
-
-    Returns:
-        str: Calculated MD5 checksum.
-    """
-    MB = 1_048_576
-    BUFFER_SIZE = 10 * MB
-    if Path(fastq).exists():
-        hash_md5 = hashlib.md5()
-        with open(fastq, "rb") as fp:
-            for chunk in iter(lambda: fp.read(BUFFER_SIZE), b""):
-                hash_md5.update(chunk)
-
-        return hash_md5.hexdigest()
-    else:
-        return None
-
-
-def download_ena_fastq(
-    ftp: str,
-    outdir: str,
-    md5: str,
-    max_attempts: int = 10,
-    force: bool = False,
-    sleep: int = 10,
-) -> str:
-    """Download FASTQs from ENA using FTP.
-
-    Args:
-        ftp (str): The FTP address of the FASTQ file.
-        outdir (str): Directory to download the FASTQ to.
-        md5 (str): Expected MD5 checksum of the FASTQ.
-        max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.
-        force: (bool, optional): Whether to overwrite existing files if the MD5's do not match
-        sleep (int): Minimum amount of time to sleep before retry
-
-    Returns:
-        str: Path to the downloaded FASTQ.
-    """
-    success = False
-    attempt = 0
-    fastq = f"{outdir}/{Path(ftp).name}"
-
-    if Path(fastq).exists() and force:
-        logging.warning(f"Overwriting existing file: {fastq}")
-        Path(fastq).unlink()
-
-    if not Path(fastq).exists():
-        Path(outdir).mkdir(parents=True, exist_ok=True)
-
-        while not success:
-            logging.info(f"\t\t{Path(ftp).name} FTP download attempt {attempt + 1}")
-            outcome = execute(
-                f"wget --quiet -O {fastq} ftp://{ftp}",
-                max_attempts=max_attempts,
-                sleep=sleep,
-            )
-            if outcome == ENA_FAILED:
-                return ENA_FAILED
-
-            if force:
-                logging.debug(f"--force used, skipping MD5sum check for {fastq}")
-                success = True
-            else:
-                fastq_md5 = md5sum(fastq)
-                if fastq_md5 != md5:
-                    logging.debug(f"MD5s, Observed: {fastq_md5}, Expected: {md5}")
-                    attempt += 1
-                    if Path(fastq).exists():
-                        Path(fastq).unlink()
-                    if attempt > max_attempts:
-                        logging.error(
-                            f"Download failed after {max_attempts} attempts. "
-                            "Please try again later or manually from SRA/ENA."
-                        )
-                        sys.exit(1)
-                else:
-                    success = True
-    else:
-        logging.debug(f"Skipping re-download of existing file: {fastq}")
-
-    return fastq
-
-
-def merge_runs(runs: list, output: str) -> None:
-    """Merge runs from an experiment or sample.
-
-    Args:
-        runs (list): A list of FASTQs to merge.
-        output (str): The final merged FASTQ.
-    """
-    if len(runs) > 1:
-        run_fqs = " ".join(runs)
-        execute(f"cat {run_fqs} > {output}")
-        for p in runs:
-            Path(p).unlink()
-    else:
-        Path(runs[0]).rename(output)
-
-
-def get_sra_metadata(query: str) -> list:
-    """Fetch metadata from SRA.
-
-    Args:
-        query (str): The accession to search for.
-
-    Returns:
-        list: Records associated with the accession.
-    """
-    #
-    db = SRAweb()
-    df = db.search_sra(
-        query, detailed=True, sample_attribute=True, expand_sample_attributes=True
-    )
-    if df is None:
-        return [False, []]
-    return [True, df.to_dict(orient="records")]
-
-
-def get_ena_metadata(query: str) -> list:
-    """Fetch metadata from ENA.
-    https://docs.google.com/document/d/1CwoY84MuZ3SdKYocqssumghBF88PWxUZ/edit#heading=h.ag0eqy2wfin5
-
-    Args:
-        query (str): The query to search for.
-
-    Returns:
-        list: Records associated with the accession.
-    """
-    url = f'{ENA_URL}&query="{query}"&fields=all'
-    headers = {"Content-type": "application/x-www-form-urlencoded"}
-    r = requests.get(url, headers=headers)
-    if r.status_code == requests.codes.ok:
-        data = []
-        col_names = None
-        for line in r.text.split("\n"):
-            cols = line.rstrip().split("\t")
-            if line:
-                if col_names:
-                    data.append(dict(zip(col_names, cols)))
-                else:
-                    col_names = cols
-        if data:
-            return [True, data]
-        else:
-            return [
-                False,
-                [r.status_code, "Query was successful, but received an empty response"],
-            ]
-    else:
-        return [False, [r.status_code, r.text]]
-
-
-def get_run_info(
-    accession: str,
-    query: str,
-    provider: str,
-    only_provider: bool,
-    max_attempts: int = 10,
-    sleep: int = 10,
-) -> tuple:
-    """Retrieve a list of samples available from ENA.
-
-    The first attempt will be against ENA, and if that fails, SRA will be queried. This should
-    capture those samples not yet synced between ENA and SRA.
-
-    Args:
-        accession (str): The accession to search for.
-        query (str): A formatted query for ENA searches.
-        provider (str): Limit queries only to the specified provider (requires only_provider be true)
-        only_provider (bool): If true, limit queries to the specified provider
-        max_attempts (int, optional): Maximum number of download attempts
-        sleep (int): Minimum amount of time to sleep before retry
-
-    Returns:
-        tuple: Records associated with the accession.
-    """
-    # Attempt for when "--only-provider" used, others to allow multiple attempts on fallback
-    attempt = 1
-    sra_attempt = 1
-    ena_attempt = 1
-    while True:
-        if only_provider:
-            logging.debug(
-                f"Querying for metadata (Attempt {attempt} of {max_attempts})"
-            )
-            logging.debug(f"--only-provider supplied, limiting queries to {provider}")
-            if provider.lower() == "ena":
-                success, ena_data = get_ena_metadata(query)
-                if success:
-                    return ENA, ena_data
-                elif attempt >= max_attempts:
-                    logging.error("There was an issue querying ENA, exiting...")
-                    logging.error(f"STATUS: {ena_data[0]}")
-                    logging.error(f"TEXT: {ena_data[1]}")
-                    sys.exit(1)
-            else:
-                success, sra_data = get_sra_metadata(accession)
-                if success:
-                    return SRA, sra_data
-                elif attempt >= max_attempts:
-                    logging.error("There was an issue querying SRA, exiting...")
-                    sys.exit(1)
-            attempt += 1
-            logging.warning(
-                f"Querying {provider.lower()} was unsuccessful, retrying after ({sleep} seconds)"
-            )
-            time.sleep(sleep)
-        else:
-            if ena_attempt < max_attempts:
-                logging.debug(
-                    f"Querying ENA for metadata (Attempt {ena_attempt} of {max_attempts})"
-                )
-            else:
-                logging.debug(
-                    f"Querying SRA for metadata (Attempt {sra_attempt} of {max_attempts})"
-                )
-
-            success, ena_data = get_ena_metadata(query)
-            if success:
-                return ENA, ena_data
-            elif ena_attempt >= max_attempts:
-                if ena_attempt == max_attempts:
-                    ena_attempt += 1
-                    logging.debug("Failed to get metadata from ENA. Trying SRA...")
-                success, sra_data = get_sra_metadata(accession)
-                if success:
-                    return SRA, sra_data
-                elif sra_attempt >= max_attempts:
-                    logging.error("There was an issue querying ENA and SRA, exiting...")
-                    logging.error(f"STATUS: {ena_data[0]}")
-                    logging.error(f"TEXT: {ena_data[1]}")
-                    sys.exit(1)
-                else:
-                    sra_attempt += 1
-                    logging.warning(
-                        f"Querying SRA was unsuccessful, retrying after ({sleep} seconds)"
-                    )
-                    time.sleep(sleep)
-            else:
-                ena_attempt += 1
-                logging.warning(
-                    f"Querying ENA was unsuccessful, retrying after ({sleep} seconds)"
-                )
-                time.sleep(sleep)
-
-
-def write_tsv(data: dict, output: str) -> None:
-    """Write a TSV file.
-
-    Args:
-        data (dict): Data to be written to TSV.
-        output (str): File to write the TSV to.
-    """
-    with open(output, "w") as fh:
-        if output.endswith("-run-mergers.tsv"):
-            writer = csv.DictWriter(
-                fh, fieldnames=["accession", "r1", "r2"], delimiter="\t"
-            )
-            writer.writeheader()
-            for accession, vals in data.items():
-                writer.writerow(
-                    {
-                        "accession": accession,
-                        "r1": ";".join(vals["r1"]),
-                        "r2": ";".join(vals["r2"]),
-                    }
-                )
-        else:
-            writer = csv.DictWriter(fh, fieldnames=data[0].keys(), delimiter="\t")
-            writer.writeheader()
-            for row in data:
-                writer.writerow(row)
-
-
-def validate_query(query: str) -> str:
-    """
-    Check that query is an accepted accession type and return the accession type. Current
-    accepted types are:
-
-        Projects - PRJEB, PRJNA, PRJDA
-        Studies - ERP, DRP, SRP
-        BioSamples - SAMD, SAME, SAMN
-        Samples - ERS, DRS, SRS
-        Experiments - ERX, DRX, SRX
-        Runs - ERR, DRR, SRR
-
-    Parameters:
-        query (str): A string containing an accession.
-
-    Returns:
-        str: A string containing the query for ENA search.
-
-    https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html
-    """
-    if re.match(r"^PRJ[EDN][A-Z][0-9]+$|^[EDS]RP[0-9]{6,}$", query):
-        # Is a project or study accession
-        return f"(study_accession={query} OR secondary_study_accession={query})"
-    elif re.match(r"^SAM[EDN][A-Z]?[0-9]+$|^[EDS]RS[0-9]{6,}$", query):
-        # Is a sample or biosample accession
-        return f"(sample_accession={query} OR secondary_sample_accession={query})"
-    elif re.match(r"^[EDS]RX[0-9]{6,}$", query):
-        # Is an experiment accession
-        return f"experiment_accession={query}"
-    elif re.match(r"^[EDS]RR[0-9]{6,}$", query):
-        # Is a run accession
-        return f"run_accession={query}"
-    else:
-        logging.error(
-            f"{query} is not a Study, Sample, Experiment, or Run accession. See https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html for valid options"
-        )
-        sys.exit(1)
 
 
 @click.command()
@@ -651,9 +91,17 @@ def validate_query(query: str) -> str:
     help="Minimum amount of time to sleep between retries (API query and download)",
 )
 @click.option(
+    "-F",
     "--force",
     is_flag=True,
-    help="Overwrite existing files if their MD5 checksums do not match.",
+    help="Overwrite existing files.",
+)
+@click.option(
+    "-I",
+    "--ignore",
+    "ignore_md5",
+    is_flag=True,
+    help="Ignore MD5 checksums for downloaded files.",
 )
 @click.option(
     "--sra-lite",
@@ -689,6 +137,7 @@ def fastqdl(
     max_attempts,
     sleep,
     force,
+    ignore_md5,
     sra_lite,
     only_provider,
     only_download_metadata,
@@ -746,13 +195,13 @@ def fastqdl(
                 )
                 continue
             logging.info(f"\tWorking on run {run_acc}...")
-            fastqs = None
             if provider.lower() == "ena" and data_from == ENA:
                 fastqs = ena_download(
                     run_info,
                     outdir,
                     max_attempts=max_attempts,
                     force=force,
+                    ignore_md5=ignore_md5,
                     sleep=sleep,
                 )
 
@@ -799,6 +248,7 @@ def fastqdl(
                             outdir,
                             max_attempts=max_attempts,
                             force=force,
+                            ignore_md5=ignore_md5,
                             sleep=sleep,
                         )
                         if fastqs == ENA_FAILED:
