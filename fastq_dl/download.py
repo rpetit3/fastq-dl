@@ -490,4 +490,4 @@ def download_ena_fastq(
                     logging.info(f"Successfully downloaded {fastq}")
                     success = True
 
-    return fastq
+    return str(fastq)
