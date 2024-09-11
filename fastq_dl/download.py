@@ -348,7 +348,7 @@ def ena_download(
     """Download FASTQs from ENA FTP using wget.
 
     Args:
-        accession (dict): Dictionary of run info to download associated FASTQs.
+        run (dict): Dictionary of run info to download associated FASTQs.
         outdir (str): Directory to write FASTQs to.
         max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.
         force: (bool, optional): Whether to overwrite existing files if the MD5's do not match
