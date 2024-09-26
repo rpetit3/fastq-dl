@@ -28,6 +28,7 @@ click.rich_click.OPTION_GROUPS = {
                 "--prefix",
                 "--cpus",
                 "--max-attempts",
+                "--do_not_compress_sra",
                 "--force",
                 "--sra-lite",
                 "--only-provider",
@@ -127,6 +128,7 @@ def sra_download(
     force: bool = False,
     sleep: int = 10,
     sra_lite: bool = False,
+    compress: bool = True,
 ) -> dict:
     """Download FASTQs from SRA using fasterq-dump.
 
@@ -143,10 +145,10 @@ def sra_download(
         dict: A dictionary of the FASTQs and their paired status.
     """
     fastqs = {"r1": "", "r2": "", "single_end": True}
-    se = f"{outdir}/{accession}.fastq.gz"
-    pe1 = f"{outdir}/{accession}_1.fastq.gz"
-    pe2 = f"{outdir}/{accession}_2.fastq.gz"
-
+    se = f"{outdir}/{accession}.fastq"+(".gz" if compress else "")
+    pe1 = f"{outdir}/{accession}_1.fastq"+(".gz" if compress else "")
+    pe2 = f"{outdir}/{accession}_2.fastq"+(".gz" if compress else "")
+        
     # remove existing files if force is selected.
     # TODO: only remove if the MD5 checksum is different.
     if force and Path(se).exists():
@@ -157,6 +159,7 @@ def sra_download(
         Path(pe2).unlink()
         logging.warning(f"Overwriting existing file: {pe1}")
         logging.warning(f"Overwriting existing file: {pe2}")
+        
 
     if not Path(se).exists() and not (Path(pe1).exists() and Path(pe2).exists()):
         Path(outdir).mkdir(parents=True, exist_ok=True)
@@ -193,7 +196,8 @@ def sra_download(
         if outcome == SRA_FAILED:
             return outcome
         else:
-            execute(f"pigz --force -p {cpus} -n {accession}*.fastq", directory=outdir)
+            if compress:
+                execute(f"pigz --force -p {cpus} -n {accession}*.fastq", directory=outdir)
             Path(f"{outdir}/{accession}.sra").unlink()
     else:
         if Path(se).exists():
@@ -202,16 +206,16 @@ def sra_download(
             logging.debug(f"Skipping re-download of existing file: {pe1}")
             logging.debug(f"Skipping re-download of existing file: {pe2}")
 
-    if Path(f"{outdir}/{accession}_2.fastq.gz").exists():
+    if Path(pe2).exists():
         # Paired end
-        fastqs["r1"] = f"{outdir}/{accession}_1.fastq.gz"
-        fastqs["r2"] = f"{outdir}/{accession}_2.fastq.gz"
-        if Path(f"{outdir}/{accession}.fastq.gz").exists():
-            fastqs["single_end"] = f"{outdir}/{accession}.fastq.gz"
+        fastqs["r1"] = pe1
+        fastqs["r2"] = pe2
+        if Path(se).exists():
+            fastqs["single_end"] = se
         else:
             fastqs["single_end"] = False
     else:
-        fastqs["r1"] = f"{outdir}/{accession}.fastq.gz"
+        fastqs["r1"] = se
 
     return fastqs
 
@@ -644,6 +648,11 @@ def validate_query(query: str) -> str:
     help="Maximum number of download attempts.",
 )
 @click.option(
+    "--do_not_compress_sra",
+    is_flag=True,
+    help="Do not compress fastq's from SRA to .gz. (saves time but not space).",
+)
+@click.option(
     "--sleep",
     "-s",
     default=10,
@@ -687,6 +696,7 @@ def fastqdl(
     outdir,
     prefix,
     max_attempts,
+    do_not_compress_sra,
     sleep,
     force,
     sra_lite,
@@ -727,6 +737,7 @@ def fastqdl(
         logging.debug("--only-download-metadata used, skipping FASTQ downloads")
     else:
         logging.info(f"Total Runs To Download: {len(ena_data)}")
+
     downloaded = {}
     runs = {} if group_by_experiment or group_by_sample else None
     outdir = Path.cwd() if outdir == "./" else f"{outdir}"
@@ -764,7 +775,7 @@ def fastqdl(
                     else:
                         # Retry download from SRA
                         logging.info(f"\t{run_acc} not found on ENA, retrying from SRA")
-
+                        
                         fastqs = sra_download(
                             run_acc,
                             outdir,
@@ -772,6 +783,7 @@ def fastqdl(
                             max_attempts=max_attempts,
                             sleep=sleep,
                             sra_lite=sra_lite,
+                            compress=not do_not_compress_sra,
                         )
                         if fastqs == SRA_FAILED:
                             logging.error(f"\t{run_acc} not found on SRA")
@@ -785,6 +797,7 @@ def fastqdl(
                     max_attempts=max_attempts,
                     sleep=sleep,
                     sra_lite=sra_lite,
+                    compress=not do_not_compress_sra,
                 )
                 if fastqs == SRA_FAILED:
                     if only_provider or data_from == SRA:
