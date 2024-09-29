@@ -19,7 +19,7 @@ keywords = ["bioinformatics", "fastq", "download", "SRA", "ENA"]
 fastq-dl = "fastq_dl.fastq_dl:main"
 
 [tool.poetry.dependencies]
-python = "^3.7.1"
+python = "^3.8"
 requests = "^2.31.0"
 pysradb = "^1.4"
 rich-click = "^1.6.1"
@@ -31,6 +31,7 @@ markdown-it-py = "2.2.0"
 black = "^23.1.0"
 isort = "^5.0"
 flake8 = "^5.0"
+pytest = "^8.3.3"
 
 [tool.isort]
 profile = "black"

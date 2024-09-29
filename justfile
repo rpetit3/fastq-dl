@@ -31,3 +31,7 @@ tag:
 # build a python release
 build:
     poetry build --no-interaction
+
+# run the unit tests
+test args="":
+    poetry run pytest {{ args }}

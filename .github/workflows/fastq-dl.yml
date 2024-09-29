@@ -40,6 +40,7 @@ jobs:
         run: |
           fastq-dl --version
           fastq-dl --help
+          just test --verbosity=2
 
       - name: Test ENA Download
         run: |
