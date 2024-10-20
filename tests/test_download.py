@@ -1,6 +1,7 @@
 import pytest
 
-from fastq_dl.download import get_ena_metadata, get_sra_metadata
+from fastq_dl.providers.ena import get_ena_metadata
+from fastq_dl.providers.sra import get_sra_metadata
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")

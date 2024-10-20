@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastq-dl"
-version = "2.0.4"
+version = "3.0.0"
 description = "Download FASTQ files from SRA or ENA repositories."
 authors = [
     "Robert A. Petit III <robbie.petit@gmail.com>",
@@ -16,7 +16,7 @@ repository = "https://github.com/rpetit3/fastq-dl"
 keywords = ["bioinformatics", "fastq", "download", "SRA", "ENA"]
 
 [tool.poetry.scripts]
-fastq-dl = "fastq_dl.fastq_dl:main"
+fastq-dl = "fastq_dl.cli.download:main"
 
 [tool.poetry.dependencies]
 python = "^3.8"

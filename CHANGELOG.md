@@ -9,11 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### TODO
 
-- rework version to centralize it to the `pyproject.toml` file
-- lint
 - consider refactoring more
 - consider adding back aspera support (now available from bioconda)
-- major bump in version
+
+## [3.0.0]
 
 ### Added
 
@@ -26,12 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ignore the MD5 as well. See https://github.com/rpetit3/fastq-dl/issues/21#issuecomment-2190686184
   for more details. Use the newly added `--ignore` flag to ignore MD5 checksums too.
 
+[2.1.0]: https://github.com/rpetit3/fastq-dl/compare/v2.0.4...v2.1.0
+
 ## [2.0.4]
 
 ### Fixed
 
 - mismatch in `--version` output
-
 
 [2.0.4]: https://github.com/rpetit3/fastq-dl/compare/v2.0.3...v2.0.4
 

@@ -4,10 +4,82 @@ import logging
 import re
 import shutil
 import sys
+import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
-from fastq_dl import PathLike
+from executor import ExternalCommand, ExternalCommandFailed
+
+from fastq_dl.constants import ENA_FAILED, SRA_FAILED
+
+PathLike = Union[str, Path]
+
+
+def execute(
+    cmd: str,
+    directory: str = str(Path.cwd()),
+    capture_stdout: bool = False,
+    stdout_file: str = None,
+    stderr_file: str = None,
+    max_attempts: int = 1,
+    is_sra: bool = False,
+    sleep: int = 10,
+) -> str:
+    """A simple wrapper around executor.
+
+    Args:
+        cmd (str): A command to execute.
+        directory (str, optional): Set the working directory for command. Defaults to str(Path.cwd()).
+        capture_stdout (bool, optional): Capture and return the STDOUT of a command. Defaults to False.
+        stdout_file (str, optional): File to write STDOUT to. Defaults to None.
+        stderr_file (str, optional): File to write STDERR to. Defaults to None.
+        max_attempts (int, optional): Maximum times to attempt command execution. Defaults to 1.
+        is_sra (bool, optional): The command is from SRA. Defaults to False.
+        sleep (int): Minimum amount of time to sleep before retry
+
+    Raises:
+        error: An unexpected error occurred.
+
+    Returns:
+        str: Exit code, accepted error message, or STDOUT of command.
+    """
+    attempt = 0
+    while attempt < max_attempts:
+        attempt += 1
+        command = ExternalCommand(
+            cmd,
+            directory=directory,
+            capture=True,
+            capture_stderr=True,
+            stdout_file=stdout_file,
+            stderr_file=stderr_file,
+        )
+        try:
+            command.start()
+            logging.debug(command.decoded_stdout)
+            logging.debug(command.decoded_stderr)
+
+            if capture_stdout:
+                return command.decoded_stdout
+            else:
+                return command.returncode
+        except ExternalCommandFailed:
+            logging.error(f'"{cmd}" return exit code {command.returncode}')
+
+            if is_sra and command.returncode == 3:
+                # The FASTQ isn't on SRA for some reason, try to download from ENA
+                error_msg = command.decoded_stderr.split("\n")[0]
+                logging.error(error_msg)
+                return SRA_FAILED
+
+            if attempt < max_attempts:
+                logging.error(f"Retry execution ({attempt} of {max_attempts})")
+                time.sleep(sleep)
+            else:
+                if is_sra:
+                    return SRA_FAILED
+                else:
+                    return ENA_FAILED
 
 
 def md5sum(fastq: PathLike) -> Optional[str]:

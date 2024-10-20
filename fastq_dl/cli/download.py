@@ -7,29 +7,40 @@ import rich
 import rich_click as click
 from rich.logging import RichHandler
 
-from fastq_dl import ENA, ENA_FAILED, SRA, SRA_FAILED, VERSION
-from fastq_dl.download import ena_download, get_run_info, sra_download
+import fastq_dl
+from fastq_dl.constants import ENA, ENA_FAILED, SRA, SRA_FAILED
+from fastq_dl.providers.ena import ena_download
+from fastq_dl.providers.generic import get_run_info
+from fastq_dl.providers.sra import sra_download
 from fastq_dl.utils import merge_runs, validate_query, write_tsv
 
 click.rich_click.USE_RICH_MARKUP = True
 click.rich_click.OPTION_GROUPS = {
     "fastq-dl": [
-        {"name": "Required Options", "options": ["--accession"]},
         {
-            "name": "Additional Options",
+            "name": "Required Options",
+            "options": ["--accession"],
+        },
+        {
+            "name": "Download Options",
             "options": [
                 "--provider",
                 "--group-by-experiment",
                 "--group-by-sample",
-                "--outdir",
-                "--prefix",
-                "--cpus",
                 "--max-attempts",
-                "--force",
-                "--ignore",
                 "--sra-lite",
                 "--only-provider",
                 "--only-download-metadata",
+            ],
+        },
+        {
+            "name": "Additional Options",
+            "options": [
+                "--outdir",
+                "--prefix",
+                "--cpus",
+                "--force",
+                "--ignore",
                 "--silent",
                 "--sleep",
                 "--version",
@@ -42,7 +53,7 @@ click.rich_click.OPTION_GROUPS = {
 
 
 @click.command()
-@click.version_option(VERSION, "--version", "-V")
+@click.version_option(fastq_dl.__version__, "--version", "-V")
 @click.option(
     "-a",
     "--accession",
@@ -60,9 +71,15 @@ click.rich_click.OPTION_GROUPS = {
     ),
 )
 @click.option(
-    "--group-by-experiment", is_flag=True, help="Group Runs by experiment accession."
+    "--group-by-experiment",
+    is_flag=True,
+    help="Group Runs by experiment accession.",
 )
-@click.option("--group-by-sample", is_flag=True, help="Group Runs by sample accession.")
+@click.option(
+    "--group-by-sample",
+    is_flag=True,
+    help="Group Runs by sample accession.",
+)
 @click.option(
     "--outdir",
     "-o",

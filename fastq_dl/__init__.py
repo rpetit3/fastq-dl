@@ -1,11 +1,5 @@
-from pathlib import Path
-from typing import Union
+"""Top-level package for fastq-dl."""
 
-PROGRAM = "fastq-dl"
-VERSION = "2.0.4"
-ENA_FAILED = "ENA_NOT_FOUND"
-SRA_FAILED = "SRA_NOT_FOUND"
-SRA = "SRA"
-ENA = "ENA"
-ENA_URL = "https://www.ebi.ac.uk/ena/portal/api/search?result=read_run&format=tsv"
-PathLike = Union[str, Path]
+from importlib import metadata
+
+__version__ = metadata.version("fastq-dl")
