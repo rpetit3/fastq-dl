@@ -70,7 +70,7 @@ fastq-dl --help
 
 *fastq-dl* requires a single ENA/SRA Study, Sample, Experiment, or Run accession and FASTQs
 for all Runs that fall under the given accession will be downloaded. For example, if a Study
-accession is given all Runs under that studies umbrella will be downloaded. By default, 
+accession is given all Runs under that studies umbrella will be downloaded. By default,
 `fastq-dl` will try to download from ENA first, then SRA.
 
 ### --accession
@@ -133,7 +133,7 @@ preference to SRA Lite.
 
 Sometimes you might be reading a paper and they very kindly provided a BioProject of all
 the samples they sequenced. So, you decide you want to download FASTQs for all the samples
-associated with the BioProject. `fastq-dl` can help you with that! 
+associated with the BioProject. `fastq-dl` can help you with that!
 
 ```{bash}
 fastq-dl --accession PRJNA248678 --provider SRA
@@ -191,7 +191,7 @@ The above command would download the Run SRR1178105 from SRA. Run accessions are
 line (1-to-1 relationship), so you will always get the expected Run.
 
 ## Motivation
-`fastq-dl`, is a spin-off of [ena-dl](https://github.com/rpetit3/ena-dl) (_pre-2017_), that has
+`fastq-dl`, is a spin-off of [ena-dl](https://github.com/rpetit3/ena-dl) (*pre-2017*), that has
 been developed for usage with [Bactopia](https://github.com/bactopia/bactopia). With this in
 mind, EBI/NCBI and provide their own tools ([enaBrowserTools](https://github.com/enasequence/enaBrowserTools)
 and [SRA Toolkit](https://github.com/ncbi/sra-tools)) that offer more extensive access to

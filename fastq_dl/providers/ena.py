@@ -4,11 +4,8 @@ from pathlib import Path
 
 import requests
 
+from fastq_dl.constants import ENA_FAILED, ENA_URL
 from fastq_dl.utils import execute, md5sum
-
-ENA = "ENA"
-ENA_FAILED = "ENA_NOT_FOUND"
-ENA_URL = "https://www.ebi.ac.uk/ena/portal/api/search?result=read_run&format=tsv"
 
 
 def get_ena_metadata(query: str) -> list:

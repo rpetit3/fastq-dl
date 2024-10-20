@@ -19,13 +19,14 @@ keywords = ["bioinformatics", "fastq", "download", "SRA", "ENA"]
 fastq-dl = "fastq_dl.cli.download:main"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 requests = "^2.31.0"
 pysradb = "^1.4"
 rich-click = "^1.6.1"
 executor = "^23.2"
 rich = "^13.3.1"
 markdown-it-py = "2.2.0"
+pandas = "^2.2.3"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
