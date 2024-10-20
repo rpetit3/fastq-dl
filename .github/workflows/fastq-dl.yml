@@ -97,3 +97,7 @@ jobs:
       - name: Test --group-by-experiment (SRA Lite)
         run: |
           fastq-dl --accession ERX012546 --outdir test-group-by-experiment-lite --verbose --group-by-sample --provider SRA --sra-lite
+
+      - name: Test BioSample (ENA, ignore MD5sum)
+        run: |
+          fastq-dl --accession SAMN06191622 --outdir test-biosample-ignore --verbose --ignore

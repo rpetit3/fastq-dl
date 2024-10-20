@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   checksums of the downloaded files. Previously, it would force download the file, but
   ignore the MD5 as well. See https://github.com/rpetit3/fastq-dl/issues/21#issuecomment-2190686184
   for more details. Use the newly added `--ignore` flag to ignore MD5 checksums too.
+- require Python >=3.9
+- updated depends and poetry lock file
+- began reorganizing code for better maintainability
 
 [3.0.0]: https://github.com/rpetit3/fastq-dl/compare/v2.0.4...v3.0.0
 
