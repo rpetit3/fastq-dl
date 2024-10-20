@@ -31,6 +31,7 @@ click.rich_click.OPTION_GROUPS = {
                 "--sra-lite",
                 "--only-provider",
                 "--only-download-metadata",
+                "--ignore",
             ],
         },
         {
@@ -40,7 +41,6 @@ click.rich_click.OPTION_GROUPS = {
                 "--prefix",
                 "--cpus",
                 "--force",
-                "--ignore",
                 "--silent",
                 "--sleep",
                 "--version",
