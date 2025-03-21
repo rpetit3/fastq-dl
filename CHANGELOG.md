@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - consider refactoring more
 - consider adding back aspera support (now available from bioconda)
+- support SRATools >3.1.1 (will require `prefetch` -> `fasterq-dump`)
+- Support poetry >1.3
+
+## [3.0.1]
+
+### Changed
+
+- require Python >=3.9 and <3.13 (_3.13 compatibility will come in a future release_)
+
+[3.0.1]: https://github.com/rpetit3/fastq-dl/compare/v3.0.0...v3.0.1
 
 ## [3.0.0]
 
