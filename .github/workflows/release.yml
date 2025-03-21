@@ -18,7 +18,6 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: '3.12'
-          miniforge-variant: 24.11.3-2
           channels: conda-forge,bioconda
           channel-priority: strict
           activate-environment: fastq-dl
