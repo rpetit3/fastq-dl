@@ -3,12 +3,11 @@ import hashlib
 import logging
 import re
 import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
 from typing import Optional, Union
-
-from executor import ExternalCommand, ExternalCommandFailed
 
 from fastq_dl.constants import ENA_FAILED, SRA_FAILED
 
@@ -19,8 +18,6 @@ def execute(
     cmd: str,
     directory: str = str(Path.cwd()),
     capture_stdout: bool = False,
-    stdout_file: str = None,
-    stderr_file: str = None,
     max_attempts: int = 1,
     is_sra: bool = False,
     sleep: int = 10,
@@ -31,8 +28,6 @@ def execute(
         cmd (str): A command to execute.
         directory (str, optional): Set the working directory for command. Defaults to str(Path.cwd()).
         capture_stdout (bool, optional): Capture and return the STDOUT of a command. Defaults to False.
-        stdout_file (str, optional): File to write STDOUT to. Defaults to None.
-        stderr_file (str, optional): File to write STDERR to. Defaults to None.
         max_attempts (int, optional): Maximum times to attempt command execution. Defaults to 1.
         is_sra (bool, optional): The command is from SRA. Defaults to False.
         sleep (int): Minimum amount of time to sleep before retry
@@ -46,29 +41,31 @@ def execute(
     attempt = 0
     while attempt < max_attempts:
         attempt += 1
-        command = ExternalCommand(
-            cmd,
-            directory=directory,
-            capture=True,
-            capture_stderr=True,
-            stdout_file=stdout_file,
-            stderr_file=stderr_file,
-        )
+
+        logging.debug(f"Executing command: {cmd}")
+        logging.debug(f"Working directory: {directory}")
         try:
-            command.start()
-            logging.debug(command.decoded_stdout)
-            logging.debug(command.decoded_stderr)
+            command = subprocess.run(
+                cmd.split(' '),  # Replace with your command and arguments
+                cwd=directory,
+                capture_output=True,
+                text=True,  # Decodes stdout/stderr as strings using default encoding
+                check=True  # Raises CalledProcessError for non-zero exit codes
+            )
+            logging.debug(f"Exit code: {command.returncode}")
+            logging.debug(f"STDOUT:\n{command.stdout}")
+            logging.debug(f"STDOUT:\n{command.stderr}")
 
             if capture_stdout:
-                return command.decoded_stdout
+                return command.stdout
             else:
                 return command.returncode
-        except ExternalCommandFailed:
-            logging.error(f'"{cmd}" return exit code {command.returncode}')
+        except subprocess.CalledProcessError as e:
+            logging.error(f'"{cmd}" return exit code {e.returncode}')
 
-            if is_sra and command.returncode == 3:
+            if is_sra and e.returncode == 3:
                 # The FASTQ isn't on SRA for some reason, try to download from ENA
-                error_msg = command.decoded_stderr.split("\n")[0]
+                error_msg = e.stderr.split("\n")[0]
                 logging.error(error_msg)
                 return SRA_FAILED
 

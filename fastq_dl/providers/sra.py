@@ -1,4 +1,6 @@
+import glob
 import logging
+import os
 from pathlib import Path
 
 from pysradb import SRAweb
@@ -109,11 +111,15 @@ def sra_download(
             sleep=sleep,
         )
 
+        # Get list of download fastq files
+        fastq_files = ' '.join([os.path.basename(f) for f in glob.glob(f"{str(outdir)}/{accession}*.fastq")])
+
         if outcome == SRA_FAILED:
             return outcome
         else:
             execute(
-                f"pigz --force -p {cpus} -n {accession}*.fastq", directory=str(outdir)
+                f"pigz --force -p {cpus} -n {fastq_files}",
+                directory=str(outdir)
             )
             (outdir / f"{accession}.sra").unlink()
             logging.info(f"Downloaded FASTQs for {accession}")
