@@ -32,6 +32,7 @@ click.rich_click.OPTION_GROUPS = {
                 "--only-provider",
                 "--only-download-metadata",
                 "--ignore",
+                "--protocol"
             ],
         },
         {
@@ -121,6 +122,13 @@ click.rich_click.OPTION_GROUPS = {
     help="Ignore MD5 checksums for downloaded files.",
 )
 @click.option(
+    "--protocol",
+    default="ftp",
+    show_default=True,
+    help="Protocol to use for ENA downloads.",
+    type=click.Choice(['ftp', 'https'], case_sensitive=False)
+)
+@click.option(
     "--sra-lite",
     is_flag=True,
     help="Set preference to SRA Lite",
@@ -161,6 +169,7 @@ def fastqdl(
     cpus,
     silent,
     verbose,
+    protocol
 ):
     """Download FASTQ files from ENA or SRA."""
     # Setup logs
@@ -220,6 +229,7 @@ def fastqdl(
                     force=force,
                     ignore_md5=ignore_md5,
                     sleep=sleep,
+                    protocol=protocol
                 )
 
                 if fastqs == ENA_FAILED:
@@ -267,6 +277,7 @@ def fastqdl(
                             force=force,
                             ignore_md5=ignore_md5,
                             sleep=sleep,
+                            protocol=protocol
                         )
                         if fastqs == ENA_FAILED:
                             logging.error(f"\tNo fastqs found in ENA for {run_acc}")

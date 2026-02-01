@@ -1,6 +1,7 @@
 import logging
 import sys
 from pathlib import Path
+from typing import Literal
 
 import requests
 
@@ -49,6 +50,7 @@ def ena_download(
     force: bool = False,
     ignore_md5: bool = False,
     sleep: int = 10,
+    protocol: Literal['ftp', 'https'] = 'ftp'
 ) -> dict:
     """Download FASTQs from ENA FTP using wget.
 
@@ -59,6 +61,7 @@ def ena_download(
         force: (bool, optional): Whether to overwrite existing files if the MD5's do not match
         ignore_md5 (bool, optional): Ignore MD5 checksums for downloaded files
         sleep (int): Minimum amount of time to sleep before retry
+        protocol (str): Protocol for download (ftp or https)
 
     Returns:
         dict: A dictionary of the FASTQs and their paired status.
@@ -101,6 +104,7 @@ def ena_download(
                 force=force,
                 ignore_md5=ignore_md5,
                 sleep=sleep,
+                protocol=protocol
             )
             if fastq == ENA_FAILED:
                 return ENA_FAILED
@@ -122,6 +126,7 @@ def download_ena_fastq(
     force: bool = False,
     ignore_md5: bool = False,
     sleep: int = 10,
+    protocol: Literal['ftp', 'https'] = 'ftp'
 ) -> str:
     """Download FASTQs from ENA using FTP.
 
@@ -164,9 +169,10 @@ def download_ena_fastq(
         outdir.mkdir(parents=True, exist_ok=True)
 
         while not success:
-            logging.info(f"\t\t{fastq} FTP download attempt {attempt + 1}")
+            logging.info(f"\t\t{fastq} {protocol.upper()} download "
+                         f"attempt {attempt + 1}")
             outcome = execute(
-                f"wget --quiet -O {fastq} ftp://{ftp}",
+                f"wget --quiet -O {fastq} {protocol}://{ftp}",
                 max_attempts=max_attempts,
                 sleep=sleep,
             )
