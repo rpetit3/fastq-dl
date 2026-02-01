@@ -1,4 +1,6 @@
+import glob
 import logging
+import os
 from pathlib import Path
 from typing import Union
 
@@ -132,12 +134,15 @@ def sra_download(
             sleep=sleep,
         )
 
+        # Get list of download fastq files
+        fastq_files = ' '.join([os.path.basename(f) for f in glob.glob(f"{str(outdir)}/{accession}*.fastq")])
+
         if outcome == SRA_FAILED:
             return outcome
         else:
             # pigz with glob pattern needs shell, but accession is validated
             execute(
-                ["pigz", "--force", "-p", str(cpus), "-n", f"{accession}*.fastq"],
+                f"pigz --force -p {cpus} -n {fastq_files}",
                 directory=str(outdir),
             )
             (outdir / f"{accession}.sra").unlink(missing_ok=True)

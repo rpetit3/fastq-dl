@@ -19,8 +19,6 @@ def execute(
     cmd: Union[str, list],
     directory: str = str(Path.cwd()),
     capture_stdout: bool = False,
-    stdout_file: str = None,
-    stderr_file: str = None,
     max_attempts: int = 1,
     is_sra: bool = False,
     sleep: int = 10,
@@ -32,8 +30,6 @@ def execute(
             or a list of arguments (preferred for security).
         directory (str, optional): Set the working directory for command. Defaults to str(Path.cwd()).
         capture_stdout (bool, optional): Capture and return the STDOUT of a command. Defaults to False.
-        stdout_file (str, optional): File to write STDOUT to. Defaults to None.
-        stderr_file (str, optional): File to write STDERR to. Defaults to None.
         max_attempts (int, optional): Maximum times to attempt command execution. Defaults to 1.
         is_sra (bool, optional): The command is from SRA. Defaults to False.
         sleep (int): Minimum amount of time to sleep before retry
@@ -65,16 +61,6 @@ def execute(
             logging.debug(f"STDOUT: {result.stdout}")
             logging.debug(f"STDERR: {result.stderr}")
 
-            # Write stdout to file if specified
-            if stdout_file and result.stdout:
-                with open(stdout_file, "w") as f:
-                    f.write(result.stdout)
-
-            # Write stderr to file if specified
-            if stderr_file and result.stderr:
-                with open(stderr_file, "w") as f:
-                    f.write(result.stderr)
-
             if capture_stdout:
                 return result.stdout
             else:
@@ -84,11 +70,6 @@ def execute(
             logging.error(f'"{cmd}" return exit code {e.returncode}')
             logging.debug(f"STDOUT: {e.stdout}")
             logging.debug(f"STDERR: {e.stderr}")
-
-            # Write stderr to file even on failure if specified
-            if stderr_file and e.stderr:
-                with open(stderr_file, "w") as f:
-                    f.write(e.stderr)
 
             if is_sra and e.returncode == 3:
                 # The FASTQ isn't on SRA for some reason, try to download from ENA
