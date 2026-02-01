@@ -2,21 +2,21 @@ import csv
 import hashlib
 import logging
 import re
+import shlex
 import shutil
-import sys
+import subprocess
 import time
 from pathlib import Path
 from typing import Optional, Union
 
-from executor import ExternalCommand, ExternalCommandFailed
-
-from fastq_dl.constants import ENA_FAILED, SRA_FAILED
+from fastq_dl.constants import ENA_FAILED, RUN_MERGERS_SUFFIX, SRA_FAILED
+from fastq_dl.exceptions import ValidationError
 
 PathLike = Union[str, Path]
 
 
 def execute(
-    cmd: str,
+    cmd: Union[str, list],
     directory: str = str(Path.cwd()),
     capture_stdout: bool = False,
     stdout_file: str = None,
@@ -25,10 +25,11 @@ def execute(
     is_sra: bool = False,
     sleep: int = 10,
 ) -> str:
-    """A simple wrapper around executor.
+    """Execute a command using subprocess.
 
     Args:
-        cmd (str): A command to execute.
+        cmd (Union[str, list]): A command to execute. Can be a string (will be split with shlex)
+            or a list of arguments (preferred for security).
         directory (str, optional): Set the working directory for command. Defaults to str(Path.cwd()).
         capture_stdout (bool, optional): Capture and return the STDOUT of a command. Defaults to False.
         stdout_file (str, optional): File to write STDOUT to. Defaults to None.
@@ -37,38 +38,61 @@ def execute(
         is_sra (bool, optional): The command is from SRA. Defaults to False.
         sleep (int): Minimum amount of time to sleep before retry
 
-    Raises:
-        error: An unexpected error occurred.
-
     Returns:
         str: Exit code, accepted error message, or STDOUT of command.
     """
+    # Convert string commands to list for subprocess
+    if isinstance(cmd, str):
+        cmd_list = shlex.split(cmd)
+    else:
+        cmd_list = cmd
+
     attempt = 0
     while attempt < max_attempts:
         attempt += 1
-        command = ExternalCommand(
-            cmd,
-            directory=directory,
-            capture=True,
-            capture_stderr=True,
-            stdout_file=stdout_file,
-            stderr_file=stderr_file,
-        )
+        logging.debug(f"Executing command: {cmd_list}")
+        logging.debug(f"Working directory: {directory}")
+
         try:
-            command.start()
-            logging.debug(command.decoded_stdout)
-            logging.debug(command.decoded_stderr)
+            result = subprocess.run(
+                cmd_list,
+                cwd=directory,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            logging.debug(f"STDOUT: {result.stdout}")
+            logging.debug(f"STDERR: {result.stderr}")
+
+            # Write stdout to file if specified
+            if stdout_file and result.stdout:
+                with open(stdout_file, "w") as f:
+                    f.write(result.stdout)
+
+            # Write stderr to file if specified
+            if stderr_file and result.stderr:
+                with open(stderr_file, "w") as f:
+                    f.write(result.stderr)
 
             if capture_stdout:
-                return command.decoded_stdout
+                return result.stdout
             else:
-                return command.returncode
-        except ExternalCommandFailed:
-            logging.error(f'"{cmd}" return exit code {command.returncode}')
+                return result.returncode
 
-            if is_sra and command.returncode == 3:
+        except subprocess.CalledProcessError as e:
+            logging.error(f'"{cmd}" return exit code {e.returncode}')
+            logging.debug(f"STDOUT: {e.stdout}")
+            logging.debug(f"STDERR: {e.stderr}")
+
+            # Write stderr to file even on failure if specified
+            if stderr_file and e.stderr:
+                with open(stderr_file, "w") as f:
+                    f.write(e.stderr)
+
+            if is_sra and e.returncode == 3:
                 # The FASTQ isn't on SRA for some reason, try to download from ENA
-                error_msg = command.decoded_stderr.split("\n")[0]
+                error_msg = e.stderr.split("\n")[0] if e.stderr else "Unknown error"
                 logging.error(error_msg)
                 return SRA_FAILED
 
@@ -113,27 +137,41 @@ def merge_runs(runs: list, output: str) -> None:
     Args:
         runs (list): A list of FASTQs to merge.
         output (str): The final merged FASTQ.
+
+    Raises:
+        FileNotFoundError: If any of the input files do not exist.
     """
-    if len(runs) > 1:
+    paths = [Path(r) for r in runs]
+
+    # Validate all files exist before starting
+    missing = [str(p) for p in paths if not p.exists()]
+    if missing:
+        raise FileNotFoundError(f"Missing files for merge: {missing}")
+
+    if len(paths) > 1:
         # concatenate the files in runs into output
         with open(output, "wb") as wfd:
-            for p in map(Path, runs):
+            for p in paths:
                 with open(p, "rb") as fd:
                     shutil.copyfileobj(fd, wfd)
-                p.unlink()
+        # Only delete source files after successful merge completion
+        for p in paths:
+            p.unlink()
     else:
-        Path(runs[0]).rename(output)
+        paths[0].rename(output)
 
 
-def write_tsv(data: dict, output: str) -> None:
+def write_tsv(data: Union[list, dict], output: str) -> None:
     """Write a TSV file.
 
     Args:
-        data (dict): Data to be written to TSV.
+        data: Data to be written to TSV. Can be either:
+            - list[dict]: List of row dictionaries (for run-info.tsv)
+            - dict[str, dict]: Dictionary of accession -> {r1, r2} mappings (for run-mergers.tsv)
         output (str): File to write the TSV to.
     """
     with open(output, "w") as fh:
-        if output.endswith("-run-mergers.tsv"):
+        if output.endswith(RUN_MERGERS_SUFFIX):
             writer = csv.DictWriter(
                 fh, fieldnames=["accession", "r1", "r2"], delimiter="\t"
             )
@@ -147,6 +185,9 @@ def write_tsv(data: dict, output: str) -> None:
                     }
                 )
         else:
+            # Handle empty data case
+            if not data:
+                return
             writer = csv.DictWriter(fh, fieldnames=data[0].keys(), delimiter="\t")
             writer.writeheader()
             for row in data:
@@ -186,7 +227,7 @@ def validate_query(query: str) -> str:
         # Is a run accession
         return f"run_accession={query}"
     else:
-        logging.error(
-            f"{query} is not a Study, Sample, Experiment, or Run accession. See https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html for valid options"
+        raise ValidationError(
+            f"{query} is not a Study, Sample, Experiment, or Run accession. "
+            "See https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html for valid options"
         )
-        sys.exit(1)

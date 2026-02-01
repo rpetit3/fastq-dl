@@ -35,3 +35,23 @@ build:
 # run the unit tests
 test args="":
     poetry run pytest {{ args }}
+
+# run unit tests with coverage
+test-cov args="":
+    poetry run pytest tests/ \
+        --cov=fastq_dl \
+        --cov-report=term-missing \
+        --cov-report=html \
+        --cov-fail-under=70 \
+        -m "not integration" \
+        {{ args }}
+
+# run only integration tests (makes real API calls)
+test-integration args="":
+    poetry run pytest tests/ \
+        -m "integration" \
+        {{ args }}
+
+# open coverage report in browser
+coverage-report:
+    {{ OPEN }} htmlcov/index.html

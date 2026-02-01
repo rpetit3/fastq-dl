@@ -1,6 +1,5 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/rpetit3/fastq-dl)](https://github.com/rpetit3/fastq-dl/releases)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/fastq-dl/badges/downloads.svg)](https://anaconda.org/bioconda/fastq-dl)
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-908a85?logo=gitpod)](https://gitpod.io/#https://github.com/rpetit3/fastq-dl)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8051230.svg)](https://doi.org/10.5281/zenodo.8051230)
 
 # fastq-dl
@@ -196,3 +195,5 @@ been developed for usage with [Bactopia](https://github.com/bactopia/bactopia). 
 mind, EBI/NCBI and provide their own tools ([enaBrowserTools](https://github.com/enasequence/enaBrowserTools)
 and [SRA Toolkit](https://github.com/ncbi/sra-tools)) that offer more extensive access to
 their databases.
+
+*AI tools were used in the development of this project.*

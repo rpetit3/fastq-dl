@@ -1,8 +1,8 @@
 import logging
-import sys
 import time
 
 from fastq_dl.constants import ENA, SRA
+from fastq_dl.exceptions import ProviderError
 from fastq_dl.providers.ena import get_ena_metadata
 from fastq_dl.providers.sra import get_sra_metadata
 
@@ -46,17 +46,21 @@ def get_run_info(
                 if success:
                     return ENA, ena_data
                 elif attempt >= max_attempts:
-                    logging.error("There was an issue querying ENA, exiting...")
-                    logging.error(f"STATUS: {ena_data[0]}")
-                    logging.error(f"TEXT: {ena_data[1]}")
-                    sys.exit(1)
+                    raise ProviderError(
+                        f"Failed to query ENA after {max_attempts} attempts. "
+                        f"STATUS: {ena_data[0]}, TEXT: {ena_data[1]}",
+                        provider="ENA",
+                        status_code=ena_data[0] if isinstance(ena_data[0], int) else None,
+                    )
             else:
                 success, sra_data = get_sra_metadata(accession)
                 if success:
                     return SRA, sra_data
                 elif attempt >= max_attempts:
-                    logging.error("There was an issue querying SRA, exiting...")
-                    sys.exit(1)
+                    raise ProviderError(
+                        f"Failed to query SRA after {max_attempts} attempts.",
+                        provider="SRA",
+                    )
             attempt += 1
             logging.warning(
                 f"Querying {provider.lower()} was unsuccessful, retrying after ({sleep} seconds)"
@@ -83,10 +87,12 @@ def get_run_info(
                 if success:
                     return SRA, sra_data
                 elif sra_attempt >= max_attempts:
-                    logging.error("There was an issue querying ENA and SRA, exiting...")
-                    logging.error(f"STATUS: {ena_data[0]}")
-                    logging.error(f"TEXT: {ena_data[1]}")
-                    sys.exit(1)
+                    raise ProviderError(
+                        f"Failed to query both ENA and SRA after {max_attempts} attempts each. "
+                        f"ENA STATUS: {ena_data[0]}, TEXT: {ena_data[1]}",
+                        provider="ENA+SRA",
+                        status_code=ena_data[0] if isinstance(ena_data[0], int) else None,
+                    )
                 else:
                     sra_attempt += 1
                     logging.warning(

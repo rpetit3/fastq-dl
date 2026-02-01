@@ -1,11 +1,11 @@
 import logging
-import sys
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Union
 
 import requests
 
-from fastq_dl.constants import ENA_FAILED, ENA_URL
+from fastq_dl.constants import ENA_FAILED, ENA_URL, PE_R1_SUFFIX, PE_R2_SUFFIX
+from fastq_dl.exceptions import DownloadError
 from fastq_dl.utils import execute, md5sum
 
 
@@ -21,7 +21,7 @@ def get_ena_metadata(query: str) -> list:
     """
     url = f'{ENA_URL}&query="{query}"&fields=all'
     headers = {"Content-type": "application/x-www-form-urlencoded"}
-    r = requests.get(url, headers=headers)
+    r = requests.get(url, headers=headers, timeout=30)
     if r.status_code == requests.codes.ok:
         data = []
         col_names = None
@@ -51,7 +51,7 @@ def ena_download(
     ignore_md5: bool = False,
     sleep: int = 10,
     protocol: Literal['ftp', 'https'] = 'ftp'
-) -> dict:
+) -> Union[dict, str]:
     """Download FASTQs from ENA FTP using wget.
 
     Args:
@@ -64,9 +64,14 @@ def ena_download(
         protocol (str): Protocol for download (ftp or https)
 
     Returns:
-        dict: A dictionary of the FASTQs and their paired status.
+        Union[dict, str]: A dictionary of the FASTQs and their paired status, or ENA_FAILED on error.
+            The dict contains:
+            - r1 (str): Path to R1 FASTQ file
+            - r2 (str): Path to R2 FASTQ file (empty string if single-end)
+            - single_end (bool): True if single-end, False if paired-end
+            - orphan (str | None): Always None for ENA (orphan reads not supported)
     """
-    fastqs = {"r1": "", "r2": "", "single_end": True}
+    fastqs = {"r1": "", "r2": "", "single_end": True, "orphan": None}
     ftp = run["fastq_ftp"]
     if not ftp:
         return ENA_FAILED
@@ -79,10 +84,10 @@ def ena_download(
         # run can have 3 files.
         # Example:ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR114/007/ERR1143237
         if run["library_layout"] == "PAIRED":
-            if ftp[i].endswith("_2.fastq.gz"):
+            if ftp[i].endswith(PE_R2_SUFFIX):
                 # Example: ERR1143237_2.fastq.gz
                 is_r2 = True
-            elif ftp[i].endswith("_1.fastq.gz"):
+            elif ftp[i].endswith(PE_R1_SUFFIX):
                 # Example: ERR1143237_1.fastq.gz
                 pass
             else:
@@ -127,8 +132,8 @@ def download_ena_fastq(
     ignore_md5: bool = False,
     sleep: int = 10,
     protocol: Literal['ftp', 'https'] = 'ftp'
-) -> str:
-    """Download FASTQs from ENA using FTP.
+) -> Union[str, str]:
+    """Download FASTQs from ENA using FTP or HTTPS.
 
     Args:
         ftp (str): The FTP address of the FASTQ file.
@@ -138,9 +143,13 @@ def download_ena_fastq(
         force: (bool, optional): Whether to overwrite existing files if the MD5's do not match
         ignore_md5 (bool, optional): Ignore MD5 checksums for downloaded files
         sleep (int): Minimum amount of time to sleep before retry
+        protocol (str): Protocol for download (ftp or https)
 
     Returns:
-        str: Path to the downloaded FASTQ.
+        str: Path to the downloaded FASTQ, or ENA_FAILED on error.
+
+    Raises:
+        DownloadError: When download fails after max_attempts due to MD5 mismatch.
     """
     success = False
     attempt = 0
@@ -169,10 +178,9 @@ def download_ena_fastq(
         outdir.mkdir(parents=True, exist_ok=True)
 
         while not success:
-            logging.info(f"\t\t{fastq} {protocol.upper()} download "
-                         f"attempt {attempt + 1}")
+            logging.info(f"{fastq} {protocol.upper()} download attempt {attempt + 1}")
             outcome = execute(
-                f"wget --quiet -O {fastq} {protocol}://{ftp}",
+                ["wget", "--quiet", "-O", str(fastq), f"{protocol}://{ftp}"],
                 max_attempts=max_attempts,
                 sleep=sleep,
             )
@@ -192,11 +200,13 @@ def download_ena_fastq(
                     if fastq.exists():
                         fastq.unlink()
                     if attempt > max_attempts:
-                        logging.error(
-                            f"Download failed after {max_attempts} attempts. "
-                            "Please try again later or manually from SRA/ENA."
+                        raise DownloadError(
+                            f"Download of {fastq} failed after {max_attempts} attempts "
+                            "due to MD5 checksum mismatch. Please try again later or "
+                            "download manually from SRA/ENA.",
+                            accession=Path(ftp).stem,
+                            provider="ENA",
                         )
-                        sys.exit(1)
                 else:
                     logging.info(f"Successfully downloaded {fastq}")
                     success = True

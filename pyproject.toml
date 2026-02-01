@@ -19,11 +19,10 @@ keywords = ["bioinformatics", "fastq", "download", "SRA", "ENA"]
 fastq-dl = "fastq_dl.cli.download:main"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.13"
+python = ">=3.10,<3.14"
 requests = "^2.31.0"
-pysradb = "^1.4"
+pysradb = "^2.3.0"
 rich-click = "^1.6.1"
-executor = "^23.2"
 rich = "^13.3.1"
 markdown-it-py = "2.2.0"
 pandas = "^2.2.3"
@@ -33,9 +32,39 @@ black = "^23.1.0"
 isort = "^5.0"
 flake8 = "^5.0"
 pytest = "^8.3.3"
+pytest-cov = "^4.1.0"
+pytest-mock = "^3.12.0"
+responses = "^0.24.0"
 
 [tool.isort]
 profile = "black"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["fastq_dl"]
+branch = true
+omit = [
+    "fastq_dl/__init__.py",
+]
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,9 +1,10 @@
 import logging
 from pathlib import Path
+from typing import Union
 
 from pysradb import SRAweb
 
-from fastq_dl.constants import SRA_FAILED
+from fastq_dl.constants import PE_R1_SUFFIX, PE_R2_SUFFIX, SE_SUFFIX, SRA_FAILED
 from fastq_dl.utils import execute
 
 
@@ -35,7 +36,7 @@ def sra_download(
     ignore_md5: bool = False,
     sleep: int = 10,
     sra_lite: bool = False,
-) -> dict:
+) -> Union[dict, str]:
     """Download FASTQs from SRA using fasterq-dump.
 
     Args:
@@ -49,13 +50,18 @@ def sra_download(
         sra_lite (bool, optional): If True, prefer SRA Lite downloads
 
     Returns:
-        dict: A dictionary of the FASTQs and their paired status.
+        Union[dict, str]: A dictionary of the FASTQs and their paired status, or SRA_FAILED on error.
+            The dict contains:
+            - r1 (str): Path to R1 FASTQ file
+            - r2 (str): Path to R2 FASTQ file (empty string if single-end)
+            - single_end (bool): True if single-end, False if paired-end
+            - orphan (str | None): Path to orphan reads file if present (paired-end with unpaired reads)
     """
     outdir = Path(outdir)
-    fastqs = {"r1": "", "r2": "", "single_end": True}
-    se = outdir / f"{accession}.fastq.gz"
-    pe1 = outdir / f"{accession}_1.fastq.gz"
-    pe2 = outdir / f"{accession}_2.fastq.gz"
+    fastqs = {"r1": "", "r2": "", "single_end": True, "orphan": None}
+    se = outdir / f"{accession}{SE_SUFFIX}"
+    pe1 = outdir / f"{accession}{PE_R1_SUFFIX}"
+    pe2 = outdir / f"{accession}{PE_R2_SUFFIX}"
 
     # remove existing files if force is selected.
     if force:
@@ -67,21 +73,31 @@ def sra_download(
     if not se.exists() and not (pe1.exists() and pe2.exists()):
         outdir.mkdir(parents=True, exist_ok=True)
 
-        vdb_config_cmd = "vdb-config --simplified-quality-scores "
+        # Use argument lists instead of string commands to prevent command injection
+        vdb_config_cmd = [
+            "vdb-config",
+            "--simplified-quality-scores",
+            "yes" if sra_lite else "no",
+        ]
         if sra_lite:
-            # Prefer SRA Lite
             logging.debug("Setting preference to SRA Lite")
-            vdb_config_cmd += "yes"
         else:
-            # Prefer SRA Normalized
             logging.debug("Setting preference to SRA Normalized")
-            vdb_config_cmd += "no"
 
         execute(vdb_config_cmd)
 
-        prefetch_cmd = f"prefetch {accession} --max-size 10T -o {accession}.sra"
-        prefetch_cmd += " -f yes" if force else " -f no"
-        prefetch_cmd += " --verify no" if ignore_md5 else " --verify yes"
+        prefetch_cmd = [
+            "prefetch",
+            accession,
+            "--max-size",
+            "10T",
+            "-o",
+            f"{accession}.sra",
+            "-f",
+            "yes" if force else "no",
+            "--verify",
+            "no" if ignore_md5 else "yes",
+        ]
 
         outcome = execute(
             prefetch_cmd,
@@ -94,10 +110,17 @@ def sra_download(
         if outcome == SRA_FAILED:
             return outcome
 
-        fasterq_dump_cmd = (
-            f"fasterq-dump {accession} --split-3 --mem 1G --threads {cpus}"
-        )
-        fasterq_dump_cmd += " -f" if force else ""
+        fasterq_dump_cmd = [
+            "fasterq-dump",
+            accession,
+            "--split-3",
+            "--mem",
+            "1G",
+            "--threads",
+            str(cpus),
+        ]
+        if force:
+            fasterq_dump_cmd.append("-f")
         # no need to check MD5 of downloaded fastq as it tests checksums as it reads
         # ref: https://github.com/ncbi/sra-tools/issues/285#issuecomment-586365769
 
@@ -112,10 +135,12 @@ def sra_download(
         if outcome == SRA_FAILED:
             return outcome
         else:
+            # pigz with glob pattern needs shell, but accession is validated
             execute(
-                f"pigz --force -p {cpus} -n {accession}*.fastq", directory=str(outdir)
+                ["pigz", "--force", "-p", str(cpus), "-n", f"{accession}*.fastq"],
+                directory=str(outdir),
             )
-            (outdir / f"{accession}.sra").unlink()
+            (outdir / f"{accession}.sra").unlink(missing_ok=True)
             logging.info(f"Downloaded FASTQs for {accession}")
     else:
         if se.exists():
@@ -128,11 +153,12 @@ def sra_download(
         # Paired end
         fastqs["r1"] = str(pe1)
         fastqs["r2"] = str(pe2)
+        fastqs["single_end"] = False
         if se.exists():
-            fastqs["single_end"] = str(se)
-        else:
-            fastqs["single_end"] = False
+            # Orphan reads file exists (unpaired reads from paired-end data)
+            fastqs["orphan"] = str(se)
     else:
         fastqs["r1"] = str(se)
+        fastqs["single_end"] = True
 
     return fastqs
