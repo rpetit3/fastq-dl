@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Any, Dict, Iterable, List, Mapping
 
 from fastq_dl.constants import ENA_FAILED, RUN_MERGERS_SUFFIX, SRA_FAILED
 from fastq_dl.exceptions import ValidationError
@@ -142,37 +142,110 @@ def merge_runs(runs: list, output: str) -> None:
         paths[0].rename(output)
 
 
-def write_tsv(data: Union[list, dict], output: str) -> None:
-    """Write a TSV file.
+def _all_fieldnames(rows: Iterable[Mapping[str, Any]]) -> List[str]:
+    """
+    Collect the union of all keys across a collection of dictionaries.
+
+    This function preserves first-seen order of keys rather than sorting them,
+    which helps maintain stable and human-readable column ordering based on
+    input data appearance.
 
     Args:
-        data: Data to be written to TSV. Can be either:
-            - list[dict]: List of row dictionaries (for run-info.tsv)
-            - dict[str, dict]: Dictionary of accession -> {r1, r2} mappings (for run-mergers.tsv)
-        output (str): File to write the TSV to.
+        rows (Iterable[Mapping[str, Any]]):
+            An iterable of dictionary-like objects representing rows.
+
+    Returns:
+        List[str]:
+            A list of unique field names (keys) appearing across all rows,
+            in order of first occurrence.
     """
-    with open(output, "w") as fh:
-        if output.endswith(RUN_MERGERS_SUFFIX):
+    fieldnames: List[str] = []
+    seen = set()
+    for r in rows:
+        for k in r.keys():
+            if k not in seen:
+                seen.add(k)
+                fieldnames.append(k)
+    return fieldnames
+
+def write_tsv(data: Union[Dict[str, Any], List[Dict[str, Any]]], output: str, na_value: str = "") -> None:
+    """
+    Write heterogeneous dictionary data to a TSV file.
+
+    This function supports two input formats:
+
+    1. A dictionary of the form:
+         {
+             accession: {"r1": [...], "r2": [...]},
+             ...
+         }
+       When `output` ends with "-run-mergers.tsv", the file will contain
+       columns: accession, r1, r2. Lists are joined with ";" and missing
+       values are replaced with `na_value`.
+
+    2. A list of dictionaries:
+         [
+             {"col1": val1, "col2": val2, ...},
+             ...
+         ]
+       In this case, the union of all keys across rows is computed and used
+       as the header. Missing keys in any row are filled with `na_value`.
+
+    Args:
+        data (Union[Dict[str, Any], List[Dict[str, Any]]]):
+            Either:
+                - A dictionary mapping identifiers to nested dictionaries
+                  (used for run-mergers output), or
+                - A list of row dictionaries for general TSV writing.
+        output (str):
+            Path to the output TSV file.
+        na_value (str, optional):
+            Value used to fill missing fields. Defaults to "" (empty string).
+
+    Returns:
+        None
+
+    Raises:
+        TypeError:
+            If the provided data structure does not match expected formats.
+    """
+    with open(output, "w", newline="") as fh:
+        if output.endswith("-run-mergers.tsv"):
             writer = csv.DictWriter(
-                fh, fieldnames=["accession", "r1", "r2"], delimiter="\t"
+                fh,
+                fieldnames=["accession", "r1", "r2"],
+                delimiter="\t",
+                extrasaction="ignore",
             )
             writer.writeheader()
-            for accession, vals in data.items():
+            # here data is expected to be dict: accession -> {"r1":[...], "r2":[...]}
+            for accession, vals in data.items():  # type: ignore[union-attr]
+                r1_list = (vals or {}).get("r1", [])
+                r2_list = (vals or {}).get("r2", [])
                 writer.writerow(
                     {
                         "accession": accession,
-                        "r1": ";".join(vals["r1"]),
-                        "r2": ";".join(vals["r2"]),
+                        "r1": ";".join(r1_list) if r1_list else na_value,
+                        "r2": ";".join(r2_list) if r2_list else na_value,
                     }
                 )
         else:
-            # Handle empty data case
-            if not data:
-                return
-            writer = csv.DictWriter(fh, fieldnames=data[0].keys(), delimiter="\t")
+            # here data is expected to be a list of dict rows
+            rows: List[Dict[str, Any]] = list(data)  # type: ignore[arg-type]
+            fieldnames = _all_fieldnames(rows)
+
+            writer = csv.DictWriter(
+                fh,
+                fieldnames=fieldnames,
+                delimiter="\t",
+                extrasaction="ignore",  # optional safety; unioned fieldnames should already include everything
+            )
             writer.writeheader()
-            for row in data:
-                writer.writerow(row)
+
+            for row in rows:
+                # fill missing keys with what was provided by na_value
+                out_row = {k: row.get(k, na_value) for k in fieldnames}
+                writer.writerow(out_row)
 
 
 def validate_query(query: str) -> str:
