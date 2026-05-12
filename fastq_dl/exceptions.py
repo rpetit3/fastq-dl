@@ -29,3 +29,30 @@ class DownloadError(FastqDLError):
         self.accession = accession
         self.provider = provider
         super().__init__(message)
+
+
+class AccessionNotFoundError(FastqDLError):
+    """Run accession not found on any provider."""
+
+    def __init__(self, message: str, failed_runs: list[str]):
+        self.failed_runs = failed_runs
+        super().__init__(message)
+
+
+class MissingFastqsError(FastqDLError):
+    """FASTQ files not available for download (archive may still be processing)."""
+
+    def __init__(self, message: str, failed_runs: list[str]):
+        self.failed_runs = failed_runs
+        super().__init__(message)
+
+
+class PartialDownloadError(FastqDLError):
+    """Some FASTQ downloads succeeded but others failed."""
+
+    def __init__(
+        self, message: str, failed_runs: list[str], successful_runs: list[str]
+    ):
+        self.failed_runs = failed_runs
+        self.successful_runs = successful_runs
+        super().__init__(message)

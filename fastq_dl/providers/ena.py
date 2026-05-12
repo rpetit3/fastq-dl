@@ -4,7 +4,13 @@ from typing import Literal, Union
 
 import requests
 
-from fastq_dl.constants import ENA_FAILED, ENA_URL, PE_R1_SUFFIX, PE_R2_SUFFIX
+from fastq_dl.constants import (
+    ENA_FAILED,
+    ENA_NO_FASTQS,
+    ENA_URL,
+    PE_R1_SUFFIX,
+    PE_R2_SUFFIX,
+)
 from fastq_dl.exceptions import DownloadError
 from fastq_dl.utils import execute, md5sum
 
@@ -74,7 +80,7 @@ def ena_download(
     fastqs = {"r1": "", "r2": "", "single_end": True, "orphan": None}
     ftp = run["fastq_ftp"]
     if not ftp:
-        return ENA_FAILED
+        return ENA_NO_FASTQS
 
     ftp = ftp.split(";")
     md5 = run["fastq_md5"].split(";")

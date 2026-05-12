@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 import responses
 
-from fastq_dl.constants import ENA_FAILED, ENA_URL
+from fastq_dl.constants import ENA_FAILED, ENA_NO_FASTQS, ENA_URL
 from fastq_dl.exceptions import DownloadError
 from fastq_dl.providers.ena import download_ena_fastq, ena_download, get_ena_metadata
 
@@ -96,7 +96,7 @@ class TestEnaDownload:
 
         result = ena_download(metadata, str(tmp_outdir))
 
-        assert result == ENA_FAILED
+        assert result == ENA_NO_FASTQS
 
     @patch("fastq_dl.providers.ena.download_ena_fastq")
     def test_paired_end_download(self, mock_download, sample_ena_metadata, tmp_outdir):

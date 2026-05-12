@@ -3,11 +3,13 @@
 # ENA Related
 ENA = "ENA"
 ENA_FAILED = "ENA_NOT_FOUND"
+ENA_NO_FASTQS = "ENA_NO_FASTQS"
 ENA_URL = "https://www.ebi.ac.uk/ena/portal/api/search?result=read_run&format=tsv"
 
 # SRA Related
 SRA = "SRA"
 SRA_FAILED = "SRA_NOT_FOUND"
+SRA_DOWNLOAD_FAILED = "SRA_DOWNLOAD_FAILED"
 
 # File suffixes
 RUN_INFO_SUFFIX = "-run-info.tsv"

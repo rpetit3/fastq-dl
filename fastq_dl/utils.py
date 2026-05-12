@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
-from fastq_dl.constants import ENA_FAILED, SRA_FAILED
+from fastq_dl.constants import ENA_FAILED, SRA_DOWNLOAD_FAILED, SRA_FAILED
 from fastq_dl.exceptions import ValidationError
 
 PathLike = Union[str, Path]
@@ -82,7 +82,7 @@ def execute(
                 time.sleep(sleep)
             else:
                 if is_sra:
-                    return SRA_FAILED
+                    return SRA_DOWNLOAD_FAILED
                 else:
                     return ENA_FAILED
 

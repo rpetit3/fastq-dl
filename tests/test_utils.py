@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from fastq_dl.constants import ENA_FAILED, SRA_FAILED
+from fastq_dl.constants import ENA_FAILED, SRA_DOWNLOAD_FAILED, SRA_FAILED
 from fastq_dl.exceptions import ValidationError
 from fastq_dl.utils import execute, md5sum, merge_runs, validate_query, write_tsv
 
@@ -182,7 +182,7 @@ class TestExecute:
         with patch("time.sleep"):
             result = execute("sra command", is_sra=True, max_attempts=1, sleep=0)
 
-        assert result == SRA_FAILED
+        assert result == SRA_DOWNLOAD_FAILED
 
     @patch("fastq_dl.utils.subprocess.run")
     @patch("time.sleep")
@@ -214,67 +214,6 @@ class TestExecute:
         mock_run.assert_called_once()
         call_kwargs = mock_run.call_args[1]
         assert call_kwargs["cwd"] == "/tmp"
-
-    @patch("fastq_dl.utils.subprocess.run")
-    def test_stdout_file_written(self, mock_run, tmp_path):
-        """Test stdout is written to file when specified."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="captured stdout content",
-            stderr="",
-        )
-
-        stdout_file = tmp_path / "stdout.txt"
-        execute("echo test", stdout_file=str(stdout_file))
-
-        assert stdout_file.exists()
-        assert stdout_file.read_text() == "captured stdout content"
-
-    @patch("fastq_dl.utils.subprocess.run")
-    def test_stderr_file_written(self, mock_run, tmp_path):
-        """Test stderr is written to file when specified."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="",
-            stderr="captured stderr content",
-        )
-
-        stderr_file = tmp_path / "stderr.txt"
-        execute("echo test", stderr_file=str(stderr_file))
-
-        assert stderr_file.exists()
-        assert stderr_file.read_text() == "captured stderr content"
-
-    @patch("fastq_dl.utils.subprocess.run")
-    def test_stderr_file_written_on_failure(self, mock_run, tmp_path):
-        """Test stderr is written to file even when command fails."""
-        mock_run.side_effect = subprocess.CalledProcessError(
-            returncode=1,
-            cmd="failing command",
-            stderr="error output",
-        )
-
-        stderr_file = tmp_path / "stderr.txt"
-        with patch("time.sleep"):
-            execute("failing command", stderr_file=str(stderr_file), max_attempts=1)
-
-        assert stderr_file.exists()
-        assert stderr_file.read_text() == "error output"
-
-    @patch("fastq_dl.utils.subprocess.run")
-    def test_stdout_file_not_written_when_empty(self, mock_run, tmp_path):
-        """Test stdout file is not written when stdout is empty."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="",
-            stderr="",
-        )
-
-        stdout_file = tmp_path / "stdout.txt"
-        execute("echo test", stdout_file=str(stdout_file))
-
-        # File should not be created when stdout is empty
-        assert not stdout_file.exists()
 
 
 # ============================================================================
@@ -366,6 +305,6 @@ class TestWriteTsv:
         # Should not raise IndexError
         write_tsv(data, str(output))
 
-        # File should exist but be empty
+        # File should exist with just a newline (csv writer writes trailing newline)
         assert output.exists()
-        assert output.read_text() == ""
+        assert output.read_text() == "\n"

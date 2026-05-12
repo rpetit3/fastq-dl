@@ -11,17 +11,22 @@ import fastq_dl
 from fastq_dl.constants import (
     ENA,
     ENA_FAILED,
+    ENA_NO_FASTQS,
     MERGED_R1_SUFFIX,
     MERGED_R2_SUFFIX,
     RUN_INFO_SUFFIX,
     RUN_MERGERS_SUFFIX,
     SE_SUFFIX,
     SRA,
+    SRA_DOWNLOAD_FAILED,
     SRA_FAILED,
 )
 from fastq_dl.exceptions import (
+    AccessionNotFoundError,
     DownloadError,
     FastqDLError,
+    MissingFastqsError,
+    PartialDownloadError,
     ProviderError,
     ValidationError,
 )
@@ -238,6 +243,15 @@ def fastqdl(
     except DownloadError as e:
         logging.error(f"Download error: {e}")
         sys.exit(1)
+    except AccessionNotFoundError as e:
+        logging.error(str(e))
+        sys.exit(2)
+    except MissingFastqsError as e:
+        logging.error(str(e))
+        sys.exit(2)
+    except PartialDownloadError as e:
+        logging.error(str(e))
+        sys.exit(3)
     except FastqDLError as e:
         logging.error(f"Error: {e}")
         sys.exit(1)
@@ -289,6 +303,9 @@ def _run_download(
     else:
         logging.info(f"Total Runs To Download: {len(ena_data)}")
     downloaded = {}
+    successful_runs = []
+    failed_runs = []
+    failure_reasons = {}
     runs = {} if group_by_experiment or group_by_sample else None
     outdir = Path(outdir).resolve() if outdir else Path.cwd()
 
@@ -334,6 +351,10 @@ def _run_download(
 
             if error:
                 ena_data[i]["error"] = error
+                failed_runs.append(run_acc)
+                failure_reasons[run_acc] = error
+            else:
+                successful_runs.append(run_acc)
 
             # Add the download results
             if fastqs:
@@ -369,6 +390,29 @@ def _run_download(
         run_info_path = outdir / f"{prefix}{RUN_INFO_SUFFIX}"
         logging.info(f"Writing metadata to {run_info_path}")
         write_tsv(ena_data, str(run_info_path))
+
+        if failed_runs and not successful_runs:
+            if any("NO_FASTQS" in r for r in failure_reasons.values()):
+                raise MissingFastqsError(
+                    f"FASTQ files not available for {len(failed_runs)} run(s): "
+                    f"{', '.join(failed_runs)}. The archive may not have "
+                    "finished processing these accessions.",
+                    failed_runs=failed_runs,
+                )
+            else:
+                raise AccessionNotFoundError(
+                    f"{len(failed_runs)} run(s) not found on any provider: "
+                    f"{', '.join(failed_runs)}",
+                    failed_runs=failed_runs,
+                )
+        elif failed_runs and successful_runs:
+            raise PartialDownloadError(
+                f"Downloaded {len(successful_runs)} of "
+                f"{len(successful_runs) + len(failed_runs)} runs. "
+                f"Failed: {', '.join(failed_runs)}",
+                failed_runs=failed_runs,
+                successful_runs=successful_runs,
+            )
 
 
 def _download_with_fallback(
@@ -426,36 +470,40 @@ def _download_with_fallback(
             sra_lite=sra_lite,
         )
 
+    ena_failures = {ENA_FAILED, ENA_NO_FASTQS}
+    sra_failures = {SRA_FAILED, SRA_DOWNLOAD_FAILED}
+
     if primary_provider.lower() == "ena":
         primary_download = _ena
-        primary_failed = ENA_FAILED
+        primary_failures = ena_failures
         fallback_download = _sra
-        fallback_failed = SRA_FAILED
+        fallback_failures = sra_failures
         primary_name, fallback_name = "ENA", "SRA"
     else:
         primary_download = _sra
-        primary_failed = SRA_FAILED
+        primary_failures = sra_failures
         fallback_download = _ena
-        fallback_failed = ENA_FAILED
+        fallback_failures = ena_failures
         primary_name, fallback_name = "SRA", "ENA"
 
     # Try primary provider
     fastqs = primary_download()
 
-    if fastqs == primary_failed:
+    if isinstance(fastqs, str) and fastqs in primary_failures:
         if only_provider:
             logging.error(f"{run_acc} not found on {primary_name}")
-            return None, primary_failed
+            return None, fastqs
 
         # Fallback to alternate provider
         logging.info(
             f"{run_acc} not found on {primary_name}, retrying from {fallback_name}"
         )
+        primary_error = fastqs
         fastqs = fallback_download()
 
-        if fastqs == fallback_failed:
+        if isinstance(fastqs, str) and fastqs in fallback_failures:
             logging.error(f"{run_acc} not found on {fallback_name}")
-            return None, f"{primary_failed}&{fallback_failed}"
+            return None, f"{primary_error}&{fastqs}"
 
     return fastqs, None
 
