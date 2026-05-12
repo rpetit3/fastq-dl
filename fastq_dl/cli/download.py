@@ -38,17 +38,22 @@ click.rich_click.OPTION_GROUPS = {
             "options": ["--accession"],
         },
         {
-            "name": "Download Options",
+            "name": "Provider Options",
             "options": [
                 "--provider",
-                "--group-by-experiment",
-                "--group-by-sample",
-                "--max-attempts",
+                "--protocol",
                 "--sra-lite",
+            ],
+        },
+        {
+            "name": "Download Options",
+            "options": [
+                "--max-attempts",
                 "--only-provider",
                 "--only-download-metadata",
+                "--group-by-experiment",
+                "--group-by-sample",
                 "--ignore",
-                "--protocol",
             ],
         },
         {
@@ -192,11 +197,12 @@ def fastqdl(
     root_logger = logging.getLogger()
     if not root_logger.handlers:
         logging.basicConfig(
-            format="%(asctime)s:%(name)s:%(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
+            format="%(message)s",
             handlers=[
                 RichHandler(
-                    rich_tracebacks=True, console=rich.console.Console(stderr=True)
+                    rich_tracebacks=True,
+                    console=rich.console.Console(stderr=True),
+                    log_time_format="%Y-%m-%d %H:%M:%S",
                 )
             ],
         )
