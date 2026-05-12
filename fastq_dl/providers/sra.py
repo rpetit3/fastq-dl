@@ -145,7 +145,6 @@ def sra_download(
         if outcome == SRA_FAILED:
             return outcome
         else:
-            # pigz with glob pattern needs shell, but accession is validated
             execute(
                 f"pigz --force -p {cpus} -n {fastq_files}",
                 directory=str(outdir),

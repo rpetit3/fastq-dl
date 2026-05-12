@@ -199,7 +199,7 @@ def download_ena_fastq(
                     attempt += 1
                     if fastq.exists():
                         fastq.unlink()
-                    if attempt > max_attempts:
+                    if attempt >= max_attempts:
                         raise DownloadError(
                             f"Download of {fastq} failed after {max_attempts} attempts "
                             "due to MD5 checksum mismatch. Please try again later or "
