@@ -156,10 +156,10 @@ def sra_download(
             logging.info(f"Downloaded FASTQs for {accession}")
     else:
         if se.exists():
-            logging.debug(f"Skipping re-download of existing file: {se}")
+            logging.info(f"Skipping re-download of existing file: {se}")
         elif pe1.exists() and pe2.exists():
-            logging.debug(f"Skipping re-download of existing file: {pe1}")
-            logging.debug(f"Skipping re-download of existing file: {pe2}")
+            logging.info(f"Skipping re-download of existing file: {pe1}")
+            logging.info(f"Skipping re-download of existing file: {pe2}")
 
     if pe2.exists():
         # Paired end

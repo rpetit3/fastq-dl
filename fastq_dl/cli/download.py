@@ -400,7 +400,7 @@ def _run_download(
                 raise MissingFastqsError(
                     f"FASTQ files not available for {len(failed_runs)} run(s): "
                     f"{', '.join(failed_runs)}. The archive may not have "
-                    "finished processing these accessions.",
+                    "finished syncing these accession(s).",
                     failed_runs=failed_runs,
                 )
             else:
