@@ -7,7 +7,6 @@ Run these tests with: pytest -m integration
 """
 
 import pytest
-from pathlib import Path
 
 
 @pytest.mark.integration
@@ -132,8 +131,8 @@ class TestGetRunInfo:
 
     def test_get_run_info_ena(self):
         """Test get_run_info with ENA provider."""
-        from fastq_dl.providers.generic import get_run_info
         from fastq_dl.constants import ENA
+        from fastq_dl.providers.generic import get_run_info
 
         source, data = get_run_info(
             "SRR2838701",
@@ -150,8 +149,8 @@ class TestGetRunInfo:
     @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_get_run_info_sra(self):
         """Test get_run_info with SRA provider."""
-        from fastq_dl.providers.generic import get_run_info
         from fastq_dl.constants import SRA
+        from fastq_dl.providers.generic import get_run_info
 
         source, data = get_run_info(
             "SRR2838701",

@@ -50,7 +50,7 @@ def ena_download(
     force: bool = False,
     ignore_md5: bool = False,
     sleep: int = 10,
-    protocol: Literal['ftp', 'https'] = 'ftp'
+    protocol: Literal["ftp", "https"] = "ftp",
 ) -> Union[dict, str]:
     """Download FASTQs from ENA FTP using wget.
 
@@ -95,7 +95,7 @@ def ena_download(
                 # Not a part of the paired end read, so skip this file. Or,
                 # its the only fastq file, and its not a paired
                 obs_fq = Path(ftp[i]).name
-                exp_fq = f'{run["run_accession"]}.fastq.gz'
+                exp_fq = f"{run['run_accession']}.fastq.gz"
                 if len(ftp) != 1 and obs_fq != exp_fq:
                     continue
 
@@ -109,7 +109,7 @@ def ena_download(
                 force=force,
                 ignore_md5=ignore_md5,
                 sleep=sleep,
-                protocol=protocol
+                protocol=protocol,
             )
             if fastq == ENA_FAILED:
                 return ENA_FAILED
@@ -131,7 +131,7 @@ def download_ena_fastq(
     force: bool = False,
     ignore_md5: bool = False,
     sleep: int = 10,
-    protocol: Literal['ftp', 'https'] = 'ftp'
+    protocol: Literal["ftp", "https"] = "ftp",
 ) -> Union[str, str]:
     """Download FASTQs from ENA using FTP or HTTPS.
 

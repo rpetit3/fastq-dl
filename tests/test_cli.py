@@ -1,9 +1,9 @@
 """Tests for CLI functionality."""
 
+from unittest.mock import patch
+
 import pytest
 from click.testing import CliRunner
-from unittest.mock import patch, MagicMock
-from pathlib import Path
 
 from fastq_dl.cli.download import fastqdl, main
 
@@ -84,7 +84,7 @@ class TestCLI:
         mock_get_run_info.return_value = ("ENA", sample_ena_metadata)
         mock_ena_download.return_value = mock_fastq_files
 
-        result = runner.invoke(
+        runner.invoke(
             fastqdl,
             [
                 "--accession",
@@ -118,7 +118,7 @@ class TestCLI:
         mock_get_run_info.return_value = ("SRA", sample_sra_metadata)
         mock_sra_download.return_value = mock_fastq_files
 
-        result = runner.invoke(
+        runner.invoke(
             fastqdl,
             [
                 "--accession",
@@ -142,18 +142,24 @@ class TestCLIOptions:
 
     def test_provider_choices_ena(self, runner):
         """Test provider option accepts 'ena'."""
-        result = runner.invoke(fastqdl, ["--accession", "SRR123456", "--provider", "ena", "--help"])
+        result = runner.invoke(
+            fastqdl, ["--accession", "SRR123456", "--provider", "ena", "--help"]
+        )
         # Just checking it parses correctly before hitting --help
         assert result.exit_code == 0
 
     def test_provider_choices_sra(self, runner):
         """Test provider option accepts 'sra'."""
-        result = runner.invoke(fastqdl, ["--accession", "SRR123456", "--provider", "sra", "--help"])
+        result = runner.invoke(
+            fastqdl, ["--accession", "SRR123456", "--provider", "sra", "--help"]
+        )
         assert result.exit_code == 0
 
     def test_provider_choices_invalid(self, runner):
         """Test provider option rejects invalid choices."""
-        result = runner.invoke(fastqdl, ["--accession", "SRR123456", "--provider", "invalid"])
+        result = runner.invoke(
+            fastqdl, ["--accession", "SRR123456", "--provider", "invalid"]
+        )
         assert result.exit_code != 0
         assert "Invalid value" in result.output or "invalid" in result.output.lower()
 
@@ -308,8 +314,7 @@ class TestMainFunction:
     def test_main_no_args(self):
         """Test main() with no arguments shows help."""
         with patch("sys.argv", ["fastq-dl"]):
-            with patch.object(fastqdl, "main") as mock_main:
-                # main() should handle empty args gracefully
+            with patch.object(fastqdl, "main"):
                 pass
 
     @patch("fastq_dl.cli.download.fastqdl")

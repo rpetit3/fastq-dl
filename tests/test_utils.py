@@ -1,7 +1,12 @@
+import csv
+import subprocess
+from unittest.mock import MagicMock, patch
+
 import pytest
 
+from fastq_dl.constants import ENA_FAILED, SRA_FAILED
 from fastq_dl.exceptions import ValidationError
-from fastq_dl.utils import md5sum, merge_runs, validate_query
+from fastq_dl.utils import execute, md5sum, merge_runs, validate_query, write_tsv
 
 
 @pytest.fixture
@@ -107,13 +112,6 @@ def test_validate_query_invalid():
 # ============================================================================
 # Tests for execute() function
 # ============================================================================
-
-from unittest.mock import patch, MagicMock
-import csv
-import subprocess
-
-from fastq_dl.utils import execute, write_tsv
-from fastq_dl.constants import ENA_FAILED, SRA_FAILED
 
 
 class TestExecute:

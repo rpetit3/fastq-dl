@@ -7,9 +7,9 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional, Union, Any, Dict, Iterable, List, Mapping
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
-from fastq_dl.constants import ENA_FAILED, RUN_MERGERS_SUFFIX, SRA_FAILED
+from fastq_dl.constants import ENA_FAILED, SRA_FAILED
 from fastq_dl.exceptions import ValidationError
 
 PathLike = Union[str, Path]
@@ -168,7 +168,10 @@ def _all_fieldnames(rows: Iterable[Mapping[str, Any]]) -> List[str]:
                 fieldnames.append(k)
     return fieldnames
 
-def write_tsv(data: Union[Dict[str, Any], List[Dict[str, Any]]], output: str, na_value: str = "") -> None:
+
+def write_tsv(
+    data: Union[Dict[str, Any], List[Dict[str, Any]]], output: str, na_value: str = ""
+) -> None:
     """
     Write heterogeneous dictionary data to a TSV file.
 

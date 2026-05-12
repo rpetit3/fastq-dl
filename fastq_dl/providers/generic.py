@@ -50,7 +50,9 @@ def get_run_info(
                         f"Failed to query ENA after {max_attempts} attempts. "
                         f"STATUS: {ena_data[0]}, TEXT: {ena_data[1]}",
                         provider="ENA",
-                        status_code=ena_data[0] if isinstance(ena_data[0], int) else None,
+                        status_code=ena_data[0]
+                        if isinstance(ena_data[0], int)
+                        else None,
                     )
             else:
                 success, sra_data = get_sra_metadata(accession)
@@ -91,7 +93,9 @@ def get_run_info(
                         f"Failed to query both ENA and SRA after {max_attempts} attempts each. "
                         f"ENA STATUS: {ena_data[0]}, TEXT: {ena_data[1]}",
                         provider="ENA+SRA",
-                        status_code=ena_data[0] if isinstance(ena_data[0], int) else None,
+                        status_code=ena_data[0]
+                        if isinstance(ena_data[0], int)
+                        else None,
                     )
                 else:
                     sra_attempt += 1

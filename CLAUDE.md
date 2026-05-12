@@ -137,16 +137,16 @@ just test tests/test_utils.py::TestValidateQuery::test_valid_run_accession
 
 ## Code Style
 
-- **Formatter**: Black
-- **Import sorting**: isort (profile: black)
-- **Linter**: flake8
+- **Formatter/Linter**: Ruff (replaces black, isort, flake8)
 - **Type hints**: Used in function signatures
 - **Docstrings**: NumPy style with Args/Returns/Raises
 
-Run formatting:
+Run formatting/linting:
 ```bash
-just fmt        # Apply formatting
-just check-fmt  # Check without changing
+just fmt        # Apply formatting and auto-fix lint issues
+just check-fmt  # Check formatting without changing
+just lint       # Check for lint violations
+just check      # Full check (format + lint)
 ```
 
 ## Common Development Tasks

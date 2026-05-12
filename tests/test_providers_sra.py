@@ -1,12 +1,11 @@
 """Tests for SRA provider functionality."""
 
-import pytest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
 
-from fastq_dl.providers.sra import get_sra_metadata, sra_download
 from fastq_dl.constants import SRA_FAILED
+from fastq_dl.providers.sra import get_sra_metadata, sra_download
 
 
 class TestGetSraMetadata:
@@ -141,7 +140,9 @@ class TestSraDownload:
         sra_download("SRR123456", str(tmp_outdir), sra_lite=True)
 
         # Check that vdb-config was called with 'yes'
-        calls = [c[0][0] for c in mock_execute.call_args_list]  # Get first positional arg of each call
+        calls = [
+            c[0][0] for c in mock_execute.call_args_list
+        ]  # Get first positional arg of each call
         assert any(
             isinstance(c, list) and "vdb-config" in c and "yes" in c for c in calls
         )
@@ -162,7 +163,9 @@ class TestSraDownload:
         sra_download("SRR123456", str(tmp_outdir), sra_lite=False)
 
         # Check that vdb-config was called with 'no'
-        calls = [c[0][0] for c in mock_execute.call_args_list]  # Get first positional arg of each call
+        calls = [
+            c[0][0] for c in mock_execute.call_args_list
+        ]  # Get first positional arg of each call
         assert any(
             isinstance(c, list) and "vdb-config" in c and "no" in c for c in calls
         )
@@ -174,10 +177,9 @@ class TestSraDownload:
         pe1.write_bytes(b"read1")
         pe2.write_bytes(b"read2")
 
-        with patch("fastq_dl.providers.sra.execute") as mock_execute:
+        with patch("fastq_dl.providers.sra.execute"):
             result = sra_download("SRR123456", str(tmp_outdir))
 
-        # execute should not have been called for download commands
         assert result["r1"] == str(pe1)
         assert result["r2"] == str(pe2)
 
@@ -186,7 +188,7 @@ class TestSraDownload:
         se = tmp_outdir / "SRR123456.fastq.gz"
         se.write_bytes(b"reads")
 
-        with patch("fastq_dl.providers.sra.execute") as mock_execute:
+        with patch("fastq_dl.providers.sra.execute"):
             result = sra_download("SRR123456", str(tmp_outdir))
 
         assert result["r1"] == str(se)
@@ -202,7 +204,9 @@ class TestSraDownload:
         sra_file = tmp_outdir / "SRR123456.sra"
         pe1.write_bytes(b"old")
         pe2.write_bytes(b"old")
-        sra_file.write_bytes(b"sra")  # Create .sra file that gets unlinked after download
+        sra_file.write_bytes(
+            b"sra"
+        )  # Create .sra file that gets unlinked after download
 
         # Create output files that would be created by fasterq-dump
         def create_output_files(*args, **kwargs):
@@ -247,7 +251,10 @@ class TestSraDownload:
         calls = [c[0][0] for c in mock_execute.call_args_list]
         # Check for fasterq-dump command with --threads and 4
         assert any(
-            isinstance(c, list) and "fasterq-dump" in c and "--threads" in c and "4" in c
+            isinstance(c, list)
+            and "fasterq-dump" in c
+            and "--threads" in c
+            and "4" in c
             for c in calls
         )
 

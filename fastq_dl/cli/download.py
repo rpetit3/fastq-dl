@@ -19,7 +19,12 @@ from fastq_dl.constants import (
     SRA,
     SRA_FAILED,
 )
-from fastq_dl.exceptions import DownloadError, FastqDLError, ProviderError, ValidationError
+from fastq_dl.exceptions import (
+    DownloadError,
+    FastqDLError,
+    ProviderError,
+    ValidationError,
+)
 from fastq_dl.providers.ena import ena_download
 from fastq_dl.providers.generic import get_run_info
 from fastq_dl.providers.sra import sra_download
@@ -43,7 +48,7 @@ click.rich_click.OPTION_GROUPS = {
                 "--only-provider",
                 "--only-download-metadata",
                 "--ignore",
-                "--protocol"
+                "--protocol",
             ],
         },
         {
@@ -137,7 +142,7 @@ click.rich_click.OPTION_GROUPS = {
     default="ftp",
     show_default=True,
     help="Protocol to use for ENA downloads.",
-    type=click.Choice(['ftp', 'https'], case_sensitive=False)
+    type=click.Choice(["ftp", "https"], case_sensitive=False),
 )
 @click.option(
     "--sra-lite",
@@ -180,7 +185,7 @@ def fastqdl(
     cpus,
     silent,
     verbose,
-    protocol
+    protocol,
 ):
     """Download FASTQ files from ENA or SRA."""
     # Setup logs only if no handlers are already configured (allows library usage)
@@ -190,7 +195,9 @@ def fastqdl(
             format="%(asctime)s:%(name)s:%(levelname)s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
             handlers=[
-                RichHandler(rich_tracebacks=True, console=rich.console.Console(stderr=True))
+                RichHandler(
+                    rich_tracebacks=True, console=rich.console.Console(stderr=True)
+                )
             ],
         )
 
@@ -391,8 +398,9 @@ def _download_with_fallback(
     Returns:
         tuple: (fastqs dict or None, error string or None)
     """
-    if primary_provider.lower() == "ena":
-        primary_download = lambda: ena_download(
+
+    def _ena():
+        return ena_download(
             run_info,
             outdir,
             max_attempts=max_attempts,
@@ -401,8 +409,9 @@ def _download_with_fallback(
             sleep=sleep,
             protocol=protocol,
         )
-        primary_failed = ENA_FAILED
-        fallback_download = lambda: sra_download(
+
+    def _sra():
+        return sra_download(
             run_acc,
             outdir,
             cpus=cpus,
@@ -410,27 +419,17 @@ def _download_with_fallback(
             sleep=sleep,
             sra_lite=sra_lite,
         )
+
+    if primary_provider.lower() == "ena":
+        primary_download = _ena
+        primary_failed = ENA_FAILED
+        fallback_download = _sra
         fallback_failed = SRA_FAILED
         primary_name, fallback_name = "ENA", "SRA"
     else:
-        primary_download = lambda: sra_download(
-            run_acc,
-            outdir,
-            cpus=cpus,
-            max_attempts=max_attempts,
-            sleep=sleep,
-            sra_lite=sra_lite,
-        )
+        primary_download = _sra
         primary_failed = SRA_FAILED
-        fallback_download = lambda: ena_download(
-            run_info,
-            outdir,
-            max_attempts=max_attempts,
-            force=force,
-            ignore_md5=ignore_md5,
-            sleep=sleep,
-            protocol=protocol,
-        )
+        fallback_download = _ena
         fallback_failed = ENA_FAILED
         primary_name, fallback_name = "SRA", "ENA"
 
@@ -443,7 +442,9 @@ def _download_with_fallback(
             return None, primary_failed
 
         # Fallback to alternate provider
-        logging.info(f"{run_acc} not found on {primary_name}, retrying from {fallback_name}")
+        logging.info(
+            f"{run_acc} not found on {primary_name}, retrying from {fallback_name}"
+        )
         fastqs = fallback_download()
 
         if fastqs == fallback_failed:

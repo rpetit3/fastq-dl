@@ -1,13 +1,13 @@
 """Tests for ENA provider functionality."""
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
 import responses
 
-from fastq_dl.exceptions import DownloadError
-from fastq_dl.providers.ena import get_ena_metadata, ena_download, download_ena_fastq
 from fastq_dl.constants import ENA_FAILED, ENA_URL
+from fastq_dl.exceptions import DownloadError
+from fastq_dl.providers.ena import download_ena_fastq, ena_download, get_ena_metadata
 
 
 class TestGetEnaMetadata:
@@ -112,7 +112,9 @@ class TestEnaDownload:
         assert result["orphan"] is None  # ENA doesn't support orphan reads
 
     @patch("fastq_dl.providers.ena.download_ena_fastq")
-    def test_single_end_download(self, mock_download, single_end_ena_metadata, tmp_outdir):
+    def test_single_end_download(
+        self, mock_download, single_end_ena_metadata, tmp_outdir
+    ):
         """Test single-end FASTQ download."""
         mock_download.return_value = str(tmp_outdir / "test.fastq.gz")
 
@@ -176,14 +178,13 @@ class TestDownloadEnaFastq:
         mock_execute.return_value = 0
         mock_md5sum.return_value = "abc123"
 
-        result = download_ena_fastq(
+        download_ena_fastq(
             "ftp.example.com/test.fastq.gz",
             str(tmp_outdir),
             "abc123",
             force=True,
         )
 
-        # execute should have been called for download
         assert mock_execute.called
 
     def test_ignore_md5_flag(self, tmp_outdir):
@@ -215,7 +216,9 @@ class TestDownloadEnaFastq:
 
     @patch("fastq_dl.providers.ena.execute")
     @patch("fastq_dl.providers.ena.md5sum")
-    def test_md5_mismatch_raises_after_max_attempts(self, mock_md5sum, mock_execute, tmp_outdir):
+    def test_md5_mismatch_raises_after_max_attempts(
+        self, mock_md5sum, mock_execute, tmp_outdir
+    ):
         """Test that repeated MD5 mismatch raises DownloadError."""
         mock_execute.return_value = 0
         # MD5 never matches

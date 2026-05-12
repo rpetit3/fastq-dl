@@ -1,4 +1,4 @@
-""" Constants used in the fastq_dl package """
+"""Constants used in the fastq_dl package"""
 
 # ENA Related
 ENA = "ENA"

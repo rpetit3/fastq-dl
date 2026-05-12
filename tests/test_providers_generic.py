@@ -1,12 +1,12 @@
 """Tests for generic provider functionality."""
 
-import pytest
-from unittest.mock import patch, MagicMock
-import time
+from unittest.mock import patch
 
+import pytest
+
+from fastq_dl.constants import ENA, SRA
 from fastq_dl.exceptions import ProviderError
 from fastq_dl.providers.generic import get_run_info
-from fastq_dl.constants import ENA, SRA
 
 
 class TestGetRunInfo:
@@ -174,7 +174,9 @@ class TestGetRunInfo:
     @patch("fastq_dl.providers.generic.get_ena_metadata")
     @patch("fastq_dl.providers.generic.get_sra_metadata")
     @patch("time.sleep")
-    def test_fallback_with_retry(self, mock_sleep, mock_sra, mock_ena, sample_sra_metadata):
+    def test_fallback_with_retry(
+        self, mock_sleep, mock_sra, mock_ena, sample_sra_metadata
+    ):
         """Test fallback from ENA to SRA with retry on SRA."""
         # ENA fails max_attempts times, then SRA fails once, then succeeds
         mock_ena.return_value = (False, [500, "Error"])

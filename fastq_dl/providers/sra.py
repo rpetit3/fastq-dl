@@ -135,7 +135,12 @@ def sra_download(
         )
 
         # Get list of download fastq files
-        fastq_files = ' '.join([os.path.basename(f) for f in glob.glob(f"{str(outdir)}/{accession}*.fastq")])
+        fastq_files = " ".join(
+            [
+                os.path.basename(f)
+                for f in glob.glob(f"{str(outdir)}/{accession}*.fastq")
+            ]
+        )
 
         if outcome == SRA_FAILED:
             return outcome
