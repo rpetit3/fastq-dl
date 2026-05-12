@@ -24,6 +24,7 @@ from fastq_dl.constants import (
 from fastq_dl.exceptions import (
     AccessionNotFoundError,
     DownloadError,
+    EmptyResultError,
     FastqDLError,
     MissingFastqsError,
     PartialDownloadError,
@@ -123,7 +124,7 @@ click.rich_click.OPTION_GROUPS = {
 @click.option(
     "--max-attempts",
     "-m",
-    default=10,
+    default=3,
     show_default=True,
     help="Maximum number of download attempts.",
 )
@@ -240,6 +241,9 @@ def fastqdl(
     except ProviderError as e:
         logging.error(f"Provider error ({e.provider}): {e}")
         sys.exit(1)
+    except EmptyResultError as e:
+        logging.error(str(e))
+        sys.exit(2)
     except DownloadError as e:
         logging.error(f"Download error: {e}")
         sys.exit(1)
@@ -296,7 +300,7 @@ def _run_download(
     )
 
     logging.info(f"Query: {accession}")
-    logging.info(f"Archive: {provider}")
+    logging.info(f"Archive: {data_from}")
     if only_download_metadata:
         logging.info(f"Total Runs Found: {len(ena_data)}")
         logging.debug("--only-download-metadata used, skipping FASTQ downloads")

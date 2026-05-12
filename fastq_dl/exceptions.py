@@ -22,6 +22,14 @@ class ProviderError(FastqDLError):
         super().__init__(message)
 
 
+class EmptyResultError(FastqDLError):
+    """Provider returned a successful response with no results."""
+
+    def __init__(self, message: str, provider: str):
+        self.provider = provider
+        super().__init__(message)
+
+
 class DownloadError(FastqDLError):
     """Error during file download."""
 

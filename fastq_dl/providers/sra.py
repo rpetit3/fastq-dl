@@ -1,6 +1,7 @@
 import glob
 import logging
 import os
+import shutil
 from pathlib import Path
 from typing import Union
 
@@ -93,8 +94,8 @@ def sra_download(
             accession,
             "--max-size",
             "10T",
-            "-o",
-            f"{accession}.sra",
+            "-O",
+            str(outdir),
             "-f",
             "yes" if force else "no",
             "--verify",
@@ -149,7 +150,9 @@ def sra_download(
                 f"pigz --force -p {cpus} -n {fastq_files}",
                 directory=str(outdir),
             )
-            (outdir / f"{accession}.sra").unlink(missing_ok=True)
+            sra_cache_dir = outdir / accession
+            if sra_cache_dir.is_dir():
+                shutil.rmtree(sra_cache_dir)
             logging.info(f"Downloaded FASTQs for {accession}")
     else:
         if se.exists():
