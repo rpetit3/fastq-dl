@@ -287,6 +287,30 @@ class TestCLIOptions:
     @patch("fastq_dl.cli.download.validate_query")
     @patch("fastq_dl.cli.download.get_run_info")
     @patch("fastq_dl.cli.download.write_tsv")
+    def test_skip_compression_flag(
+        self, mock_write_tsv, mock_get_run_info, mock_validate_query, runner, tmp_path
+    ):
+        """Test --skip-compression flag is accepted."""
+        mock_validate_query.return_value = "run_accession=SRR123456"
+        mock_get_run_info.return_value = ("ENA", [])
+
+        result = runner.invoke(
+            fastqdl,
+            [
+                "--accession",
+                "SRR123456",
+                "--skip-compression",
+                "--only-download-metadata",
+                "--outdir",
+                str(tmp_path),
+            ],
+        )
+
+        assert result.exit_code == 0
+
+    @patch("fastq_dl.cli.download.validate_query")
+    @patch("fastq_dl.cli.download.get_run_info")
+    @patch("fastq_dl.cli.download.write_tsv")
     def test_ignore_flag(
         self, mock_write_tsv, mock_get_run_info, mock_validate_query, runner, tmp_path
     ):

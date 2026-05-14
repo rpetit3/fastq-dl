@@ -49,6 +49,7 @@ click.rich_click.OPTION_GROUPS = {
                 "--provider",
                 "--protocol",
                 "--sra-lite",
+                "--skip-compression",
             ],
         },
         {
@@ -161,6 +162,11 @@ click.rich_click.OPTION_GROUPS = {
     help="Set preference to SRA Lite",
 )
 @click.option(
+    "--skip-compression",
+    is_flag=True,
+    help="Skip pigz compression of SRA downloads.",
+)
+@click.option(
     "--only-provider",
     is_flag=True,
     help="Only attempt download from specified provider.",
@@ -172,7 +178,7 @@ click.rich_click.OPTION_GROUPS = {
 )
 @click.option(
     "--cpus",
-    default=1,
+    default=4,
     show_default=True,
     help="Total cpus used for downloading from SRA.",
 )
@@ -191,6 +197,7 @@ def fastqdl(
     force,
     ignore_md5,
     sra_lite,
+    skip_compression,
     only_provider,
     only_download_metadata,
     cpus,
@@ -230,6 +237,7 @@ def fastqdl(
             force=force,
             ignore_md5=ignore_md5,
             sra_lite=sra_lite,
+            skip_compression=skip_compression,
             only_provider=only_provider,
             only_download_metadata=only_download_metadata,
             cpus=cpus,
@@ -273,6 +281,7 @@ def _run_download(
     force: bool,
     ignore_md5: bool,
     sra_lite: bool,
+    skip_compression: bool,
     only_provider: bool,
     only_download_metadata: bool,
     cpus: int,
@@ -350,6 +359,7 @@ def _run_download(
                 sleep=sleep,
                 cpus=cpus,
                 sra_lite=sra_lite,
+                skip_compression=skip_compression,
                 protocol=protocol,
             )
 
@@ -431,6 +441,7 @@ def _download_with_fallback(
     sleep: int,
     cpus: int,
     sra_lite: bool,
+    skip_compression: bool,
     protocol: str = "ftp",
 ) -> tuple:
     """Download FASTQs with fallback to alternate provider.
@@ -470,8 +481,11 @@ def _download_with_fallback(
             outdir,
             cpus=cpus,
             max_attempts=max_attempts,
+            force=force,
+            ignore_md5=ignore_md5,
             sleep=sleep,
             sra_lite=sra_lite,
+            compress=not skip_compression,
         )
 
     ena_failures = {ENA_FAILED, ENA_NO_FASTQS}

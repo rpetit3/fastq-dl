@@ -7,7 +7,15 @@ from typing import Union
 
 from pysradb import SRAweb
 
-from fastq_dl.constants import PE_R1_SUFFIX, PE_R2_SUFFIX, SE_SUFFIX, SRA_FAILED
+from fastq_dl.constants import (
+    PE_R1_SUFFIX,
+    PE_R1_SUFFIX_UNCOMPRESSED,
+    PE_R2_SUFFIX,
+    PE_R2_SUFFIX_UNCOMPRESSED,
+    SE_SUFFIX,
+    SE_SUFFIX_UNCOMPRESSED,
+    SRA_FAILED,
+)
 from fastq_dl.utils import execute
 
 
@@ -39,6 +47,7 @@ def sra_download(
     ignore_md5: bool = False,
     sleep: int = 10,
     sra_lite: bool = False,
+    compress: bool = True,
 ) -> Union[dict, str]:
     """Download FASTQs from SRA using fasterq-dump.
 
@@ -62,9 +71,14 @@ def sra_download(
     """
     outdir = Path(outdir)
     fastqs = {"r1": "", "r2": "", "single_end": True, "orphan": None}
-    se = outdir / f"{accession}{SE_SUFFIX}"
-    pe1 = outdir / f"{accession}{PE_R1_SUFFIX}"
-    pe2 = outdir / f"{accession}{PE_R2_SUFFIX}"
+    if compress:
+        se = outdir / f"{accession}{SE_SUFFIX}"
+        pe1 = outdir / f"{accession}{PE_R1_SUFFIX}"
+        pe2 = outdir / f"{accession}{PE_R2_SUFFIX}"
+    else:
+        se = outdir / f"{accession}{SE_SUFFIX_UNCOMPRESSED}"
+        pe1 = outdir / f"{accession}{PE_R1_SUFFIX_UNCOMPRESSED}"
+        pe2 = outdir / f"{accession}{PE_R2_SUFFIX_UNCOMPRESSED}"
 
     # remove existing files if force is selected.
     if force:
@@ -146,10 +160,13 @@ def sra_download(
         if outcome == SRA_FAILED:
             return outcome
         else:
-            execute(
-                f"pigz --force -p {cpus} -n {fastq_files}",
-                directory=str(outdir),
-            )
+            if compress:
+                execute(
+                    f"pigz --force -p {cpus} -n {fastq_files}",
+                    directory=str(outdir),
+                )
+            else:
+                logging.debug("'--skip-compression' provided, skipping compression")
             sra_cache_dir = outdir / accession
             if sra_cache_dir.is_dir():
                 shutil.rmtree(sra_cache_dir)

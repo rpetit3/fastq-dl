@@ -285,6 +285,42 @@ class TestSraDownload:
         assert prefetch_cmd[verify_idx + 1] == "no"
 
     @patch("fastq_dl.providers.sra.execute")
+    def test_skip_compress_produces_uncompressed_files(self, mock_execute, tmp_outdir):
+        """Test compress=False skips pigz and uses .fastq suffixes."""
+        mock_execute.return_value = 0
+
+        # Create mock uncompressed output files
+        se = tmp_outdir / "SRR123456.fastq"
+        se.write_bytes(b"reads")
+
+        result = sra_download("SRR123456", str(tmp_outdir), compress=False)
+
+        assert result["r1"] == str(se)
+        assert result["single_end"] is True
+        assert str(result["r1"]).endswith(".fastq")
+        # pigz should not have been called
+        calls = [c[0][0] for c in mock_execute.call_args_list]
+        assert not any(isinstance(c, str) and "pigz" in c for c in calls)
+
+    @patch("fastq_dl.providers.sra.execute")
+    def test_skip_compress_paired_end(self, mock_execute, tmp_outdir):
+        """Test compress=False with paired-end data uses .fastq suffixes."""
+        mock_execute.return_value = 0
+
+        pe1 = tmp_outdir / "SRR123456_1.fastq"
+        pe2 = tmp_outdir / "SRR123456_2.fastq"
+        pe1.write_bytes(b"read1")
+        pe2.write_bytes(b"read2")
+
+        result = sra_download("SRR123456", str(tmp_outdir), compress=False)
+
+        assert result["r1"] == str(pe1)
+        assert result["r2"] == str(pe2)
+        assert result["single_end"] is False
+        assert str(result["r1"]).endswith("_1.fastq")
+        assert str(result["r2"]).endswith("_2.fastq")
+
+    @patch("fastq_dl.providers.sra.execute")
     def test_md5_verification_enabled_by_default(self, mock_execute, tmp_outdir):
         """Test MD5 verification is enabled by default (--verify yes)."""
         se = tmp_outdir / "SRR123456.fastq.gz"

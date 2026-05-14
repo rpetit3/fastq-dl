@@ -20,6 +20,11 @@ PE_R1_SUFFIX = "_1.fastq.gz"
 PE_R2_SUFFIX = "_2.fastq.gz"
 SE_SUFFIX = ".fastq.gz"
 
+# Uncompressed FASTQ suffixes (SRA downloads with --skip-sra-compress)
+PE_R1_SUFFIX_UNCOMPRESSED = "_1.fastq"
+PE_R2_SUFFIX_UNCOMPRESSED = "_2.fastq"
+SE_SUFFIX_UNCOMPRESSED = ".fastq"
+
 # Merged FASTQ suffixes
 MERGED_R1_SUFFIX = "_R1.fastq.gz"
 MERGED_R2_SUFFIX = "_R2.fastq.gz"
