@@ -4,6 +4,7 @@ channels:
 dependencies:
   - just
   - pigz
+  - pip
   - poetry
   - python >=3.10,<3.14
   - sra-tools >3.1.1
