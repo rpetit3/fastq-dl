@@ -1,0 +1,133 @@
+# fastq-dl
+
+> Download FASTQ files from SRA or ENA repositories.
+
+- **Version**: 3.1.0
+- **Repository**: https://github.com/rpetit3/fastq-dl
+- **License**: MIT
+- **Python**: >=3.10,<3.14
+- **Modules**: 8 | **Functions**: 17 | **Classes**: 8
+
+## Architecture
+
+fastq-dl follows a 3-layer architecture:
+
+1. **CLI Layer** (`fastq_dl/cli/download.py`): Click-based command-line interface that parses
+   arguments, sets up logging, and orchestrates the download workflow.
+
+2. **Provider Layer** (`fastq_dl/providers/`): Handles metadata queries and file downloads from
+   ENA and SRA. Includes automatic fallback between providers with configurable retry logic.
+   - `generic.py` — Provider coordination, fallback orchestration
+   - `ena.py` — ENA Data Warehouse API queries, wget-based FTP/HTTPS downloads
+   - `sra.py` — SRA queries via pysradb, prefetch + fasterq-dump downloads
+
+3. **Utilities Layer** (`fastq_dl/utils.py`): Subprocess execution with retries, MD5 checksums,
+   FASTQ merging, accession validation, and TSV output.
+
+### Data Flow
+
+```
+CLI (accession input)
+ → validate_query() → accession type regex check
+ → get_run_info()   → query primary provider, fallback to secondary
+ → _download_with_fallback() → download FASTQs per run
+ → merge_runs() (optional) → concatenate grouped FASTQs
+ → write_tsv() → output metadata files
+```
+
+## Module Index
+
+### fastq_dl.__init__
+- **Path**: `fastq_dl/__init__.py`
+- **Description**: Top-level package for fastq-dl.
+
+### fastq_dl.cli.download
+- **Path**: `fastq_dl/cli/download.py`
+- **Functions**: `fastqdl`, `_run_download`, `_download_with_fallback`, `main`
+
+### fastq_dl.constants
+- **Path**: `fastq_dl/constants.py`
+- **Description**: Constants used in the fastq_dl package
+
+### fastq_dl.exceptions
+- **Path**: `fastq_dl/exceptions.py`
+- **Description**: Custom exceptions for fastq-dl.
+- **Classes**: `FastqDLError`, `ValidationError`, `ProviderError`, `EmptyResultError`, `DownloadError`, `AccessionNotFoundError`, `MissingFastqsError`, `PartialDownloadError`
+
+### fastq_dl.providers.ena
+- **Path**: `fastq_dl/providers/ena.py`
+- **Functions**: `get_ena_metadata`, `ena_download`, `download_ena_fastq`
+
+### fastq_dl.providers.generic
+- **Path**: `fastq_dl/providers/generic.py`
+- **Functions**: `_is_ena_empty_response`, `get_run_info`
+
+### fastq_dl.providers.sra
+- **Path**: `fastq_dl/providers/sra.py`
+- **Functions**: `get_sra_metadata`, `sra_download`
+
+### fastq_dl.utils
+- **Path**: `fastq_dl/utils.py`
+- **Functions**: `execute`, `md5sum`, `merge_runs`, `_all_fieldnames`, `write_tsv`, `validate_query`
+
+## CLI Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--accession` (`-a`) | required | ENA/SRA accession to query. (Study, Sample, Experiment, Run accession) |
+| `--provider` | ena | Specify which provider (ENA or SRA) to use. |
+| `--group-by-experiment` | off | Group Runs by experiment accession. |
+| `--group-by-sample` | off | Group Runs by sample accession. |
+| `--outdir` (`-o`) | ./ | Directory to output downloads to. |
+| `--prefix` | fastq | Prefix to use for naming log files. |
+| `--max-attempts` (`-m`) | 3 | Maximum number of download attempts. |
+| `--sleep` (`-s`) | 10 | Minimum amount of time to sleep between retries (API query and download) |
+| `--force` (`-F`) | off | Overwrite existing files. |
+| `--ignore` (`-I`) | off | Ignore MD5 checksums for downloaded files. |
+| `--protocol` | ftp | Protocol to use for ENA downloads. |
+| `--sra-lite` | off | Set preference to SRA Lite |
+| `--skip-compression` | off | Skip pigz compression of SRA downloads. |
+| `--only-provider` | off | Only attempt download from specified provider. |
+| `--only-download-metadata` | off | Skip FASTQ downloads, and retrieve only the metadata. |
+| `--cpus` | 4 | Total cpus used for downloading from SRA. |
+| `--silent` | off | Only critical errors will be printed. |
+| `--verbose` (`-v`) | off | Print debug related text. |
+
+## Exception Hierarchy
+
+All exceptions inherit from `FastqDLError`:
+
+- **FastqDLError**: Base exception for fastq-dl.
+- **ValidationError**: Invalid accession or input.
+- **ProviderError**: Error from a data provider (ENA/SRA). (attrs: message, provider, status_code)
+- **EmptyResultError**: Provider returned a successful response with no results. (attrs: message, provider)
+- **DownloadError**: Error during file download. (attrs: message, accession, provider)
+- **AccessionNotFoundError**: Run accession not found on any provider. (attrs: message, failed_runs)
+- **MissingFastqsError**: FASTQ files not available for download (archive may still be processing). (attrs: message, failed_runs)
+- **PartialDownloadError**: Some FASTQ downloads succeeded but others failed. (attrs: message, failed_runs, successful_runs)
+
+Exit codes: `1` = validation/provider/download error, `2` = empty/not found/missing, `3` = partial download
+
+## External Tool Dependencies
+
+- `wget` — ENA FTP/HTTPS downloads
+- `prefetch` — SRA file download (from sra-tools)
+- `fasterq-dump` — SRA to FASTQ conversion (from sra-tools)
+- `vdb-config` — SRA configuration (from sra-tools)
+- `pigz` — Parallel gzip compression
+
+## Development
+
+```bash
+poetry install          # Install dependencies
+just test-cov           # Unit tests with 70% coverage minimum
+just test-integration   # Integration tests (real API calls)
+just fmt                # Format with ruff
+just check              # Format + lint check
+just build              # Build package
+```
+
+## Machine-Readable Metadata
+
+See `catalog.json` for structured project metadata including detailed function signatures,
+CLI option definitions, dependency versions, and the complete exception hierarchy.

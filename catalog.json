@@ -1,0 +1,1172 @@
+{
+  "name": "fastq-dl",
+  "version": "3.1.0",
+  "description": "Download FASTQ files from SRA or ENA repositories.",
+  "repository": "https://github.com/rpetit3/fastq-dl",
+  "homepage": "https://github.com/rpetit3/fastq-dl",
+  "license": "MIT",
+  "python_requires": ">=3.10,<3.14",
+  "generated_at": "2026-05-14T17:49:17.631990+00:00",
+  "modules": {
+    "fastq_dl.__init__": {
+      "path": "fastq_dl/__init__.py",
+      "module": "fastq_dl.__init__",
+      "description": "Top-level package for fastq-dl.",
+      "functions": {},
+      "classes": {},
+      "constants": {}
+    },
+    "fastq_dl.cli.download": {
+      "path": "fastq_dl/cli/download.py",
+      "module": "fastq_dl.cli.download",
+      "description": "",
+      "functions": {
+        "fastqdl": {
+          "name": "fastqdl",
+          "description": "Download FASTQ files from ENA or SRA.",
+          "args": [
+            {
+              "name": "accession",
+              "description": "ENA/SRA accession to query. (Study, Sample, Experiment, Run accession)"
+            },
+            {
+              "name": "provider",
+              "description": "Specify which provider (ENA or SRA) to use.",
+              "default": "ena"
+            },
+            {
+              "name": "group_by_experiment",
+              "description": "Group Runs by experiment accession.",
+              "default": "False"
+            },
+            {
+              "name": "group_by_sample",
+              "description": "Group Runs by sample accession.",
+              "default": "False"
+            },
+            {
+              "name": "outdir",
+              "description": "Directory to output downloads to.",
+              "default": "./"
+            },
+            {
+              "name": "prefix",
+              "description": "Prefix to use for naming log files.",
+              "default": "fastq"
+            },
+            {
+              "name": "max_attempts",
+              "description": "Maximum number of download attempts.",
+              "default": "3"
+            },
+            {
+              "name": "sleep",
+              "description": "Minimum amount of time to sleep between retries (API query and download)",
+              "default": "10"
+            },
+            {
+              "name": "force",
+              "description": "Overwrite existing files.",
+              "default": "False"
+            },
+            {
+              "name": "ignore_md5",
+              "description": "Ignore MD5 checksums for downloaded files.",
+              "default": "False"
+            },
+            {
+              "name": "sra_lite",
+              "description": "Set preference to SRA Lite",
+              "default": "False"
+            },
+            {
+              "name": "skip_compression",
+              "description": "Skip pigz compression of SRA downloads.",
+              "default": "False"
+            },
+            {
+              "name": "only_provider",
+              "description": "Only attempt download from specified provider.",
+              "default": "False"
+            },
+            {
+              "name": "only_download_metadata",
+              "description": "Skip FASTQ downloads, and retrieve only the metadata.",
+              "default": "False"
+            },
+            {
+              "name": "cpus",
+              "description": "Total cpus used for downloading from SRA.",
+              "default": "4"
+            },
+            {
+              "name": "silent",
+              "description": "Only critical errors will be printed.",
+              "default": "False"
+            },
+            {
+              "name": "verbose",
+              "description": "Print debug related text.",
+              "default": "False"
+            },
+            {
+              "name": "protocol",
+              "description": "Protocol to use for ENA downloads.",
+              "default": "ftp"
+            }
+          ],
+          "returns": null,
+          "lineno": 188
+        },
+        "_run_download": {
+          "name": "_run_download",
+          "description": "Internal function that performs the actual download logic.\n\nThis function contains the core download logic and may raise FastqDLError\nsubclasses which are caught by the CLI wrapper.\n\nRaises:\n    ValidationError: If the accession is invalid.\n    ProviderError: If there's an error querying ENA/SRA.\n    DownloadError: If there's an error downloading files.",
+          "args": [
+            {
+              "name": "accession",
+              "annotation": "str",
+              "description": "ENA/SRA accession to query. (Study, Sample, Experiment, Run accession)"
+            },
+            {
+              "name": "provider",
+              "annotation": "str",
+              "description": "Specify which provider (ENA or SRA) to use.",
+              "default": "ena"
+            },
+            {
+              "name": "group_by_experiment",
+              "annotation": "bool",
+              "description": "Group Runs by experiment accession.",
+              "default": "False"
+            },
+            {
+              "name": "group_by_sample",
+              "annotation": "bool",
+              "description": "Group Runs by sample accession.",
+              "default": "False"
+            },
+            {
+              "name": "outdir",
+              "annotation": "str",
+              "description": "Directory to output downloads to.",
+              "default": "./"
+            },
+            {
+              "name": "prefix",
+              "annotation": "str",
+              "description": "Prefix to use for naming log files.",
+              "default": "fastq"
+            },
+            {
+              "name": "max_attempts",
+              "annotation": "int",
+              "description": "Maximum number of download attempts.",
+              "default": "3"
+            },
+            {
+              "name": "sleep",
+              "annotation": "int",
+              "description": "Minimum amount of time to sleep between retries (API query and download)",
+              "default": "10"
+            },
+            {
+              "name": "force",
+              "annotation": "bool",
+              "description": "Overwrite existing files.",
+              "default": "False"
+            },
+            {
+              "name": "ignore_md5",
+              "annotation": "bool",
+              "description": "Ignore MD5 checksums for downloaded files.",
+              "default": "False"
+            },
+            {
+              "name": "sra_lite",
+              "annotation": "bool",
+              "description": "Set preference to SRA Lite",
+              "default": "False"
+            },
+            {
+              "name": "skip_compression",
+              "annotation": "bool",
+              "description": "Skip pigz compression of SRA downloads.",
+              "default": "False"
+            },
+            {
+              "name": "only_provider",
+              "annotation": "bool",
+              "description": "Only attempt download from specified provider.",
+              "default": "False"
+            },
+            {
+              "name": "only_download_metadata",
+              "annotation": "bool",
+              "description": "Skip FASTQ downloads, and retrieve only the metadata.",
+              "default": "False"
+            },
+            {
+              "name": "cpus",
+              "annotation": "int",
+              "description": "Total cpus used for downloading from SRA.",
+              "default": "4"
+            },
+            {
+              "name": "protocol",
+              "annotation": "str",
+              "default": "'ftp'",
+              "description": "Protocol to use for ENA downloads."
+            }
+          ],
+          "returns": "None",
+          "lineno": 272
+        },
+        "_download_with_fallback": {
+          "name": "_download_with_fallback",
+          "description": "Download FASTQs with fallback to alternate provider.\n\nArgs:\n    run_info: Dictionary containing run metadata (needed for ENA download)\n    run_acc: Run accession string\n    outdir: Output directory\n    primary_provider: 'ena' or 'sra' - which provider to try first\n    only_provider: If True, do not fallback to alternate provider\n    max_attempts: Maximum download attempts\n    force: Overwrite existing files\n    ignore_md5: Skip MD5 verification\n    sleep: Sleep time between retries\n    cpus: Number of CPUs for SRA download\n    sra_lite: Use SRA Lite format\n    protocol: Protocol for ENA downloads (ftp or https)\n\nReturns:\n    tuple: (fastqs dict or None, error string or None)",
+          "args": [
+            {
+              "name": "run_info",
+              "annotation": "dict",
+              "description": "Dictionary containing run metadata (needed for ENA download)"
+            },
+            {
+              "name": "run_acc",
+              "annotation": "str",
+              "description": "Run accession string"
+            },
+            {
+              "name": "outdir",
+              "annotation": "str",
+              "description": "Output directory"
+            },
+            {
+              "name": "primary_provider",
+              "annotation": "str",
+              "description": "'ena' or 'sra' - which provider to try first"
+            },
+            {
+              "name": "only_provider",
+              "annotation": "bool",
+              "description": "If True, do not fallback to alternate provider"
+            },
+            {
+              "name": "max_attempts",
+              "annotation": "int",
+              "description": "Maximum download attempts"
+            },
+            {
+              "name": "force",
+              "annotation": "bool",
+              "description": "Overwrite existing files"
+            },
+            {
+              "name": "ignore_md5",
+              "annotation": "bool",
+              "description": "Skip MD5 verification"
+            },
+            {
+              "name": "sleep",
+              "annotation": "int",
+              "description": "Sleep time between retries"
+            },
+            {
+              "name": "cpus",
+              "annotation": "int",
+              "description": "Number of CPUs for SRA download"
+            },
+            {
+              "name": "sra_lite",
+              "annotation": "bool",
+              "description": "Use SRA Lite format"
+            },
+            {
+              "name": "skip_compression",
+              "annotation": "bool",
+              "description": "Skip pigz compression of SRA downloads.",
+              "default": "False"
+            },
+            {
+              "name": "protocol",
+              "annotation": "str",
+              "description": "Protocol for ENA downloads (ftp or https)",
+              "default": "'ftp'"
+            }
+          ],
+          "returns": "tuple",
+          "lineno": 432
+        },
+        "main": {
+          "name": "main",
+          "description": "",
+          "args": [],
+          "returns": null,
+          "lineno": 529
+        }
+      },
+      "classes": {},
+      "constants": {}
+    },
+    "fastq_dl.constants": {
+      "path": "fastq_dl/constants.py",
+      "module": "fastq_dl.constants",
+      "description": "Constants used in the fastq_dl package",
+      "functions": {},
+      "classes": {},
+      "constants": {
+        "ENA": "ENA",
+        "ENA_FAILED": "ENA_NOT_FOUND",
+        "ENA_NO_FASTQS": "ENA_NO_FASTQS",
+        "ENA_URL": "https://www.ebi.ac.uk/ena/portal/api/search?result=read_run&format=tsv",
+        "SRA": "SRA",
+        "SRA_FAILED": "SRA_NOT_FOUND",
+        "SRA_DOWNLOAD_FAILED": "SRA_DOWNLOAD_FAILED",
+        "RUN_INFO_SUFFIX": "-run-info.tsv",
+        "RUN_MERGERS_SUFFIX": "-run-mergers.tsv",
+        "PE_R1_SUFFIX": "_1.fastq.gz",
+        "PE_R2_SUFFIX": "_2.fastq.gz",
+        "SE_SUFFIX": ".fastq.gz",
+        "PE_R1_SUFFIX_UNCOMPRESSED": "_1.fastq",
+        "PE_R2_SUFFIX_UNCOMPRESSED": "_2.fastq",
+        "SE_SUFFIX_UNCOMPRESSED": ".fastq",
+        "MERGED_R1_SUFFIX": "_R1.fastq.gz",
+        "MERGED_R2_SUFFIX": "_R2.fastq.gz"
+      }
+    },
+    "fastq_dl.exceptions": {
+      "path": "fastq_dl/exceptions.py",
+      "module": "fastq_dl.exceptions",
+      "description": "Custom exceptions for fastq-dl.",
+      "functions": {},
+      "classes": {
+        "FastqDLError": {
+          "name": "FastqDLError",
+          "description": "Base exception for fastq-dl.",
+          "bases": [
+            "Exception"
+          ],
+          "init_args": [],
+          "lineno": 4
+        },
+        "ValidationError": {
+          "name": "ValidationError",
+          "description": "Invalid accession or input.",
+          "bases": [
+            "FastqDLError"
+          ],
+          "init_args": [],
+          "lineno": 10
+        },
+        "ProviderError": {
+          "name": "ProviderError",
+          "description": "Error from a data provider (ENA/SRA).",
+          "bases": [
+            "FastqDLError"
+          ],
+          "init_args": [
+            {
+              "name": "message",
+              "annotation": "str"
+            },
+            {
+              "name": "provider",
+              "annotation": "str"
+            },
+            {
+              "name": "status_code",
+              "annotation": "int",
+              "default": "None"
+            }
+          ],
+          "lineno": 16
+        },
+        "EmptyResultError": {
+          "name": "EmptyResultError",
+          "description": "Provider returned a successful response with no results.",
+          "bases": [
+            "FastqDLError"
+          ],
+          "init_args": [
+            {
+              "name": "message",
+              "annotation": "str"
+            },
+            {
+              "name": "provider",
+              "annotation": "str"
+            }
+          ],
+          "lineno": 25
+        },
+        "DownloadError": {
+          "name": "DownloadError",
+          "description": "Error during file download.",
+          "bases": [
+            "FastqDLError"
+          ],
+          "init_args": [
+            {
+              "name": "message",
+              "annotation": "str"
+            },
+            {
+              "name": "accession",
+              "annotation": "str",
+              "default": "None"
+            },
+            {
+              "name": "provider",
+              "annotation": "str",
+              "default": "None"
+            }
+          ],
+          "lineno": 33
+        },
+        "AccessionNotFoundError": {
+          "name": "AccessionNotFoundError",
+          "description": "Run accession not found on any provider.",
+          "bases": [
+            "FastqDLError"
+          ],
+          "init_args": [
+            {
+              "name": "message",
+              "annotation": "str"
+            },
+            {
+              "name": "failed_runs",
+              "annotation": "list[str]"
+            }
+          ],
+          "lineno": 42
+        },
+        "MissingFastqsError": {
+          "name": "MissingFastqsError",
+          "description": "FASTQ files not available for download (archive may still be processing).",
+          "bases": [
+            "FastqDLError"
+          ],
+          "init_args": [
+            {
+              "name": "message",
+              "annotation": "str"
+            },
+            {
+              "name": "failed_runs",
+              "annotation": "list[str]"
+            }
+          ],
+          "lineno": 50
+        },
+        "PartialDownloadError": {
+          "name": "PartialDownloadError",
+          "description": "Some FASTQ downloads succeeded but others failed.",
+          "bases": [
+            "FastqDLError"
+          ],
+          "init_args": [
+            {
+              "name": "message",
+              "annotation": "str"
+            },
+            {
+              "name": "failed_runs",
+              "annotation": "list[str]"
+            },
+            {
+              "name": "successful_runs",
+              "annotation": "list[str]"
+            }
+          ],
+          "lineno": 58
+        }
+      },
+      "constants": {}
+    },
+    "fastq_dl.providers.ena": {
+      "path": "fastq_dl/providers/ena.py",
+      "module": "fastq_dl.providers.ena",
+      "description": "",
+      "functions": {
+        "get_ena_metadata": {
+          "name": "get_ena_metadata",
+          "description": "Fetch metadata from ENA.\nhttps://docs.google.com/document/d/1CwoY84MuZ3SdKYocqssumghBF88PWxUZ/edit#heading=h.ag0eqy2wfin5\n\nArgs:\n    query (str): The query to search for.\n\nReturns:\n    list: Records associated with the accession.",
+          "args": [
+            {
+              "name": "query",
+              "annotation": "str",
+              "description": "The query to search for."
+            }
+          ],
+          "returns": "list",
+          "lineno": 18
+        },
+        "ena_download": {
+          "name": "ena_download",
+          "description": "Download FASTQs from ENA FTP using wget.\n\nArgs:\n    run (dict): Dictionary of run info to download associated FASTQs.\n    outdir (str): Directory to write FASTQs to.\n    max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.\n    force: (bool, optional): Whether to overwrite existing files if the MD5's do not match\n    ignore_md5 (bool, optional): Ignore MD5 checksums for downloaded files\n    sleep (int): Minimum amount of time to sleep before retry\n    protocol (str): Protocol for download (ftp or https)\n\nReturns:\n    Union[dict, str]: A dictionary of the FASTQs and their paired status, or ENA_FAILED on error.\n        The dict contains:\n        - r1 (str): Path to R1 FASTQ file\n        - r2 (str): Path to R2 FASTQ file (empty string if single-end)\n        - single_end (bool): True if single-end, False if paired-end\n        - orphan (str | None): Always None for ENA (orphan reads not supported)",
+          "args": [
+            {
+              "name": "run",
+              "annotation": "dict",
+              "description": "Dictionary of run info to download associated FASTQs."
+            },
+            {
+              "name": "outdir",
+              "annotation": "str",
+              "description": "Directory to write FASTQs to."
+            },
+            {
+              "name": "max_attempts",
+              "annotation": "int",
+              "description": "Maximum number of download attempts. Defaults to 10.",
+              "default": "10"
+            },
+            {
+              "name": "force",
+              "annotation": "bool",
+              "description": "(bool, optional): Whether to overwrite existing files if the MD5's do not match",
+              "default": "False"
+            },
+            {
+              "name": "ignore_md5",
+              "annotation": "bool",
+              "description": "Ignore MD5 checksums for downloaded files",
+              "default": "False"
+            },
+            {
+              "name": "sleep",
+              "annotation": "int",
+              "description": "Minimum amount of time to sleep before retry",
+              "default": "10"
+            },
+            {
+              "name": "protocol",
+              "annotation": "Literal['ftp', 'https']",
+              "description": "Protocol for download (ftp or https)",
+              "default": "'ftp'"
+            }
+          ],
+          "returns": "Union[dict, str]",
+          "lineno": 52
+        },
+        "download_ena_fastq": {
+          "name": "download_ena_fastq",
+          "description": "Download FASTQs from ENA using FTP or HTTPS.\n\nArgs:\n    ftp (str): The FTP address of the FASTQ file.\n    outdir (str): Directory to download the FASTQ to.\n    md5 (str): Expected MD5 checksum of the FASTQ.\n    max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.\n    force: (bool, optional): Whether to overwrite existing files if the MD5's do not match\n    ignore_md5 (bool, optional): Ignore MD5 checksums for downloaded files\n    sleep (int): Minimum amount of time to sleep before retry\n    protocol (str): Protocol for download (ftp or https)\n\nReturns:\n    str: Path to the downloaded FASTQ, or ENA_FAILED on error.\n\nRaises:\n    DownloadError: When download fails after max_attempts due to MD5 mismatch.",
+          "args": [
+            {
+              "name": "ftp",
+              "annotation": "str",
+              "description": "The FTP address of the FASTQ file."
+            },
+            {
+              "name": "outdir",
+              "annotation": "str",
+              "description": "Directory to download the FASTQ to."
+            },
+            {
+              "name": "md5",
+              "annotation": "str",
+              "description": "Expected MD5 checksum of the FASTQ."
+            },
+            {
+              "name": "max_attempts",
+              "annotation": "int",
+              "description": "Maximum number of download attempts. Defaults to 10.",
+              "default": "10"
+            },
+            {
+              "name": "force",
+              "annotation": "bool",
+              "description": "(bool, optional): Whether to overwrite existing files if the MD5's do not match",
+              "default": "False"
+            },
+            {
+              "name": "ignore_md5",
+              "annotation": "bool",
+              "description": "Ignore MD5 checksums for downloaded files",
+              "default": "False"
+            },
+            {
+              "name": "sleep",
+              "annotation": "int",
+              "description": "Minimum amount of time to sleep before retry",
+              "default": "10"
+            },
+            {
+              "name": "protocol",
+              "annotation": "Literal['ftp', 'https']",
+              "description": "Protocol for download (ftp or https)",
+              "default": "'ftp'"
+            }
+          ],
+          "returns": "Union[str, str]",
+          "lineno": 132
+        }
+      },
+      "classes": {},
+      "constants": {}
+    },
+    "fastq_dl.providers.generic": {
+      "path": "fastq_dl/providers/generic.py",
+      "module": "fastq_dl.providers.generic",
+      "description": "",
+      "functions": {
+        "_is_ena_empty_response": {
+          "name": "_is_ena_empty_response",
+          "description": "Check if ENA returned HTTP 200 with no data rows.",
+          "args": [
+            {
+              "name": "ena_data",
+              "annotation": "list"
+            }
+          ],
+          "returns": "bool",
+          "lineno": 10
+        },
+        "get_run_info": {
+          "name": "get_run_info",
+          "description": "Retrieve a list of samples available from ENA.\n\nThe first attempt will be against ENA, and if that fails, SRA will be queried. This should\ncapture those samples not yet synced between ENA and SRA.\n\nArgs:\n    accession (str): The accession to search for.\n    query (str): A formatted query for ENA searches.\n    provider (str): Limit queries only to the specified provider (requires only_provider be true)\n    only_provider (bool): If true, limit queries to the specified provider\n    max_attempts (int, optional): Maximum number of download attempts\n    sleep (int): Minimum amount of time to sleep before retry\n\nReturns:\n    tuple: Records associated with the accession.",
+          "args": [
+            {
+              "name": "accession",
+              "annotation": "str",
+              "description": "The accession to search for."
+            },
+            {
+              "name": "query",
+              "annotation": "str",
+              "description": "A formatted query for ENA searches."
+            },
+            {
+              "name": "provider",
+              "annotation": "str",
+              "description": "Limit queries only to the specified provider (requires only_provider be true)"
+            },
+            {
+              "name": "only_provider",
+              "annotation": "bool",
+              "description": "If true, limit queries to the specified provider"
+            },
+            {
+              "name": "max_attempts",
+              "annotation": "int",
+              "description": "Maximum number of download attempts",
+              "default": "3"
+            },
+            {
+              "name": "sleep",
+              "annotation": "int",
+              "description": "Minimum amount of time to sleep before retry",
+              "default": "10"
+            }
+          ],
+          "returns": "tuple",
+          "lineno": 15
+        }
+      },
+      "classes": {},
+      "constants": {}
+    },
+    "fastq_dl.providers.sra": {
+      "path": "fastq_dl/providers/sra.py",
+      "module": "fastq_dl.providers.sra",
+      "description": "",
+      "functions": {
+        "get_sra_metadata": {
+          "name": "get_sra_metadata",
+          "description": "Fetch metadata from SRA.\n\nArgs:\n    query (str): The accession to search for.\n\nReturns:\n    list: Records associated with the accession.",
+          "args": [
+            {
+              "name": "query",
+              "annotation": "str",
+              "description": "The accession to search for."
+            }
+          ],
+          "returns": "list",
+          "lineno": 22
+        },
+        "sra_download": {
+          "name": "sra_download",
+          "description": "Download FASTQs from SRA using fasterq-dump.\n\nArgs:\n    accession (str): The accession to download associated FASTQs.\n    outdir (str): Directory to write FASTQs to.\n    cpus (int, optional): Number of CPUs to use. Defaults to 1.\n    max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.\n    force (bool, optional): Force overwrite of existing files\n    ignore_md5 (bool, optional): Ignore MD5 checksums for downloaded files\n    sleep (int, default = 10): Amount of seconds to sleep in between attempts\n    sra_lite (bool, optional): If True, prefer SRA Lite downloads\n\nReturns:\n    Union[dict, str]: A dictionary of the FASTQs and their paired status, or SRA_FAILED on error.\n        The dict contains:\n        - r1 (str): Path to R1 FASTQ file\n        - r2 (str): Path to R2 FASTQ file (empty string if single-end)\n        - single_end (bool): True if single-end, False if paired-end\n        - orphan (str | None): Path to orphan reads file if present (paired-end with unpaired reads)",
+          "args": [
+            {
+              "name": "accession",
+              "annotation": "str",
+              "description": "The accession to download associated FASTQs."
+            },
+            {
+              "name": "outdir",
+              "annotation": "str",
+              "description": "Directory to write FASTQs to."
+            },
+            {
+              "name": "cpus",
+              "annotation": "int",
+              "description": "Number of CPUs to use. Defaults to 1.",
+              "default": "1"
+            },
+            {
+              "name": "max_attempts",
+              "annotation": "int",
+              "description": "Maximum number of download attempts. Defaults to 10.",
+              "default": "10"
+            },
+            {
+              "name": "force",
+              "annotation": "bool",
+              "description": "Force overwrite of existing files",
+              "default": "False"
+            },
+            {
+              "name": "ignore_md5",
+              "annotation": "bool",
+              "description": "Ignore MD5 checksums for downloaded files",
+              "default": "False"
+            },
+            {
+              "name": "sleep",
+              "annotation": "int",
+              "description": "Amount of seconds to sleep in between attempts",
+              "default": "10"
+            },
+            {
+              "name": "sra_lite",
+              "annotation": "bool",
+              "description": "If True, prefer SRA Lite downloads",
+              "default": "False"
+            },
+            {
+              "name": "compress",
+              "annotation": "bool",
+              "default": "True"
+            }
+          ],
+          "returns": "Union[dict, str]",
+          "lineno": 41
+        }
+      },
+      "classes": {},
+      "constants": {}
+    },
+    "fastq_dl.utils": {
+      "path": "fastq_dl/utils.py",
+      "module": "fastq_dl.utils",
+      "description": "",
+      "functions": {
+        "execute": {
+          "name": "execute",
+          "description": "Execute a command using subprocess.\n\nArgs:\n    cmd (Union[str, list]): A command to execute. Can be a string (will be split with shlex)\n        or a list of arguments (preferred for security).\n    directory (str, optional): Set the working directory for command. Defaults to str(Path.cwd()).\n    capture_stdout (bool, optional): Capture and return the STDOUT of a command. Defaults to False.\n    max_attempts (int, optional): Maximum times to attempt command execution. Defaults to 1.\n    is_sra (bool, optional): The command is from SRA. Defaults to False.\n    sleep (int): Minimum amount of time to sleep before retry\n\nReturns:\n    str: Exit code, accepted error message, or STDOUT of command.",
+          "args": [
+            {
+              "name": "cmd",
+              "annotation": "Union[str, list]",
+              "description": "A command to execute. Can be a string (will be split with shlex) or a list of arguments (preferred for security)."
+            },
+            {
+              "name": "directory",
+              "annotation": "str",
+              "description": "Set the working directory for command. Defaults to str(Path.cwd()).",
+              "default": "str(Path.cwd())"
+            },
+            {
+              "name": "capture_stdout",
+              "annotation": "bool",
+              "description": "Capture and return the STDOUT of a command. Defaults to False.",
+              "default": "False"
+            },
+            {
+              "name": "max_attempts",
+              "annotation": "int",
+              "description": "Maximum times to attempt command execution. Defaults to 1.",
+              "default": "1"
+            },
+            {
+              "name": "is_sra",
+              "annotation": "bool",
+              "description": "The command is from SRA. Defaults to False.",
+              "default": "False"
+            },
+            {
+              "name": "sleep",
+              "annotation": "int",
+              "description": "Minimum amount of time to sleep before retry",
+              "default": "10"
+            }
+          ],
+          "returns": "str",
+          "lineno": 18
+        },
+        "md5sum": {
+          "name": "md5sum",
+          "description": "Calculate the MD5 checksum of a file.\n\nSource: https://stackoverflow.com/a/3431838/5299417\n\nArgs:\n    fastq (str): Input FASTQ to calculate MD5 checksum for.\n\nReturns:\n    str: Calculated MD5 checksum.",
+          "args": [
+            {
+              "name": "fastq",
+              "annotation": "PathLike",
+              "description": "Input FASTQ to calculate MD5 checksum for."
+            }
+          ],
+          "returns": "Optional[str]",
+          "lineno": 90
+        },
+        "merge_runs": {
+          "name": "merge_runs",
+          "description": "Merge runs from an experiment or sample.\n\nArgs:\n    runs (list): A list of FASTQs to merge.\n    output (str): The final merged FASTQ.\n\nRaises:\n    FileNotFoundError: If any of the input files do not exist.",
+          "args": [
+            {
+              "name": "runs",
+              "annotation": "list",
+              "description": "A list of FASTQs to merge."
+            },
+            {
+              "name": "output",
+              "annotation": "str",
+              "description": "The final merged FASTQ."
+            }
+          ],
+          "returns": "None",
+          "lineno": 115
+        },
+        "_all_fieldnames": {
+          "name": "_all_fieldnames",
+          "description": "Collect the union of all keys across a collection of dictionaries.\n\nThis function preserves first-seen order of keys rather than sorting them,\nwhich helps maintain stable and human-readable column ordering based on\ninput data appearance.\n\nArgs:\n    rows (Iterable[Mapping[str, Any]]):\n        An iterable of dictionary-like objects representing rows.\n\nReturns:\n    List[str]:\n        A list of unique field names (keys) appearing across all rows,\n        in order of first occurrence.",
+          "args": [
+            {
+              "name": "rows",
+              "annotation": "Iterable[Mapping[str, Any]]",
+              "description": " An iterable of dictionary-like objects representing rows."
+            }
+          ],
+          "returns": "List[str]",
+          "lineno": 145
+        },
+        "write_tsv": {
+          "name": "write_tsv",
+          "description": "Write heterogeneous dictionary data to a TSV file.\n\nThis function supports two input formats:\n\n1. A dictionary of the form:\n     {\n         accession: {\"r1\": [...], \"r2\": [...]},\n         ...\n     }\n   When `output` ends with \"-run-mergers.tsv\", the file will contain\n   columns: accession, r1, r2. Lists are joined with \";\" and missing\n   values are replaced with `na_value`.\n\n2. A list of dictionaries:\n     [\n         {\"col1\": val1, \"col2\": val2, ...},\n         ...\n     ]\n   In this case, the union of all keys across rows is computed and used\n   as the header. Missing keys in any row are filled with `na_value`.\n\nArgs:\n    data (Union[Dict[str, Any], List[Dict[str, Any]]]):\n        Either:\n            - A dictionary mapping identifiers to nested dictionaries\n              (used for run-mergers output), or\n            - A list of row dictionaries for general TSV writing.\n    output (str):\n        Path to the output TSV file.\n    na_value (str, optional):\n        Value used to fill missing fields. Defaults to \"\" (empty string).\n\nReturns:\n    None\n\nRaises:\n    TypeError:\n        If the provided data structure does not match expected formats.",
+          "args": [
+            {
+              "name": "data",
+              "annotation": "Union[Dict[str, Any], List[Dict[str, Any]]]",
+              "description": ""
+            },
+            {
+              "name": "output",
+              "annotation": "str"
+            },
+            {
+              "name": "na_value",
+              "annotation": "str",
+              "default": "''"
+            }
+          ],
+          "returns": "None",
+          "lineno": 172
+        },
+        "validate_query": {
+          "name": "validate_query",
+          "description": "Check that query is an accepted accession type and return the accession type. Current\naccepted types are:\n\n    Projects - PRJEB, PRJNA, PRJDA\n    Studies - ERP, DRP, SRP\n    BioSamples - SAMD, SAME, SAMN\n    Samples - ERS, DRS, SRS\n    Experiments - ERX, DRX, SRX\n    Runs - ERR, DRR, SRR\n\nParameters:\n    query (str): A string containing an accession.\n\nReturns:\n    str: A string containing the query for ENA search.\n\nhttps://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html",
+          "args": [
+            {
+              "name": "query",
+              "annotation": "str",
+              "description": "A string containing an accession."
+            }
+          ],
+          "returns": "str",
+          "lineno": 254
+        }
+      },
+      "classes": {},
+      "constants": {}
+    }
+  },
+  "cli_options": [
+    {
+      "name": "--accession",
+      "short": "-a",
+      "required": true,
+      "help": "ENA/SRA accession to query. (Study, Sample, Experiment, Run accession)"
+    },
+    {
+      "name": "--provider",
+      "default": "ena",
+      "help": "Specify which provider (ENA or SRA) to use.",
+      "type": "click.Choice(['ena', 'sra'], case_sensitive=False)"
+    },
+    {
+      "name": "--group-by-experiment",
+      "is_flag": true,
+      "help": "Group Runs by experiment accession."
+    },
+    {
+      "name": "--group-by-sample",
+      "is_flag": true,
+      "help": "Group Runs by sample accession."
+    },
+    {
+      "name": "--outdir",
+      "short": "-o",
+      "default": "./",
+      "help": "Directory to output downloads to."
+    },
+    {
+      "name": "--prefix",
+      "default": "fastq",
+      "help": "Prefix to use for naming log files."
+    },
+    {
+      "name": "--max-attempts",
+      "short": "-m",
+      "default": 3,
+      "help": "Maximum number of download attempts."
+    },
+    {
+      "name": "--sleep",
+      "short": "-s",
+      "default": 10,
+      "help": "Minimum amount of time to sleep between retries (API query and download)"
+    },
+    {
+      "name": "--force",
+      "short": "-F",
+      "is_flag": true,
+      "help": "Overwrite existing files."
+    },
+    {
+      "name": "--ignore",
+      "short": "-I",
+      "is_flag": true,
+      "help": "Ignore MD5 checksums for downloaded files."
+    },
+    {
+      "name": "--protocol",
+      "default": "ftp",
+      "help": "Protocol to use for ENA downloads.",
+      "type": "click.Choice(['ftp', 'https'], case_sensitive=False)"
+    },
+    {
+      "name": "--sra-lite",
+      "is_flag": true,
+      "help": "Set preference to SRA Lite"
+    },
+    {
+      "name": "--skip-compression",
+      "is_flag": true,
+      "help": "Skip pigz compression of SRA downloads."
+    },
+    {
+      "name": "--only-provider",
+      "is_flag": true,
+      "help": "Only attempt download from specified provider."
+    },
+    {
+      "name": "--only-download-metadata",
+      "is_flag": true,
+      "help": "Skip FASTQ downloads, and retrieve only the metadata."
+    },
+    {
+      "name": "--cpus",
+      "default": 4,
+      "help": "Total cpus used for downloading from SRA."
+    },
+    {
+      "name": "--silent",
+      "is_flag": true,
+      "help": "Only critical errors will be printed."
+    },
+    {
+      "name": "--verbose",
+      "short": "-v",
+      "is_flag": true,
+      "help": "Print debug related text."
+    }
+  ],
+  "dependencies": {
+    "runtime": {
+      "requests": "^2.31.0",
+      "pysradb": "^2.3.0",
+      "rich-click": "^1.6.1",
+      "rich": "^13.3.1",
+      "markdown-it-py": "2.2.0",
+      "pandas": "^2.2.3"
+    },
+    "dev": {
+      "ruff": ">=0.15",
+      "pytest": "^8.3.3",
+      "pytest-cov": "^4.1.0",
+      "pytest-mock": "^3.12.0",
+      "responses": "^0.24.0"
+    }
+  },
+  "external_tools": [
+    {
+      "name": "wget",
+      "purpose": "ENA FTP/HTTPS downloads"
+    },
+    {
+      "name": "prefetch",
+      "purpose": "SRA file download",
+      "package": "sra-tools"
+    },
+    {
+      "name": "fasterq-dump",
+      "purpose": "SRA to FASTQ conversion",
+      "package": "sra-tools"
+    },
+    {
+      "name": "vdb-config",
+      "purpose": "SRA configuration",
+      "package": "sra-tools"
+    },
+    {
+      "name": "pigz",
+      "purpose": "Parallel gzip compression"
+    }
+  ],
+  "exceptions": {
+    "FastqDLError": {
+      "description": "Base exception for fastq-dl.",
+      "bases": [
+        "Exception"
+      ],
+      "init_args": []
+    },
+    "ValidationError": {
+      "description": "Invalid accession or input.",
+      "bases": [
+        "FastqDLError"
+      ],
+      "init_args": []
+    },
+    "ProviderError": {
+      "description": "Error from a data provider (ENA/SRA).",
+      "bases": [
+        "FastqDLError"
+      ],
+      "init_args": [
+        {
+          "name": "message",
+          "annotation": "str"
+        },
+        {
+          "name": "provider",
+          "annotation": "str"
+        },
+        {
+          "name": "status_code",
+          "annotation": "int",
+          "default": "None"
+        }
+      ]
+    },
+    "EmptyResultError": {
+      "description": "Provider returned a successful response with no results.",
+      "bases": [
+        "FastqDLError"
+      ],
+      "init_args": [
+        {
+          "name": "message",
+          "annotation": "str"
+        },
+        {
+          "name": "provider",
+          "annotation": "str"
+        }
+      ]
+    },
+    "DownloadError": {
+      "description": "Error during file download.",
+      "bases": [
+        "FastqDLError"
+      ],
+      "init_args": [
+        {
+          "name": "message",
+          "annotation": "str"
+        },
+        {
+          "name": "accession",
+          "annotation": "str",
+          "default": "None"
+        },
+        {
+          "name": "provider",
+          "annotation": "str",
+          "default": "None"
+        }
+      ]
+    },
+    "AccessionNotFoundError": {
+      "description": "Run accession not found on any provider.",
+      "bases": [
+        "FastqDLError"
+      ],
+      "init_args": [
+        {
+          "name": "message",
+          "annotation": "str"
+        },
+        {
+          "name": "failed_runs",
+          "annotation": "list[str]"
+        }
+      ]
+    },
+    "MissingFastqsError": {
+      "description": "FASTQ files not available for download (archive may still be processing).",
+      "bases": [
+        "FastqDLError"
+      ],
+      "init_args": [
+        {
+          "name": "message",
+          "annotation": "str"
+        },
+        {
+          "name": "failed_runs",
+          "annotation": "list[str]"
+        }
+      ]
+    },
+    "PartialDownloadError": {
+      "description": "Some FASTQ downloads succeeded but others failed.",
+      "bases": [
+        "FastqDLError"
+      ],
+      "init_args": [
+        {
+          "name": "message",
+          "annotation": "str"
+        },
+        {
+          "name": "failed_runs",
+          "annotation": "list[str]"
+        },
+        {
+          "name": "successful_runs",
+          "annotation": "list[str]"
+        }
+      ]
+    }
+  },
+  "constants": {
+    "ENA": "ENA",
+    "ENA_FAILED": "ENA_NOT_FOUND",
+    "ENA_NO_FASTQS": "ENA_NO_FASTQS",
+    "ENA_URL": "https://www.ebi.ac.uk/ena/portal/api/search?result=read_run&format=tsv",
+    "SRA": "SRA",
+    "SRA_FAILED": "SRA_NOT_FOUND",
+    "SRA_DOWNLOAD_FAILED": "SRA_DOWNLOAD_FAILED",
+    "RUN_INFO_SUFFIX": "-run-info.tsv",
+    "RUN_MERGERS_SUFFIX": "-run-mergers.tsv",
+    "PE_R1_SUFFIX": "_1.fastq.gz",
+    "PE_R2_SUFFIX": "_2.fastq.gz",
+    "SE_SUFFIX": ".fastq.gz",
+    "PE_R1_SUFFIX_UNCOMPRESSED": "_1.fastq",
+    "PE_R2_SUFFIX_UNCOMPRESSED": "_2.fastq",
+    "SE_SUFFIX_UNCOMPRESSED": ".fastq",
+    "MERGED_R1_SUFFIX": "_R1.fastq.gz",
+    "MERGED_R2_SUFFIX": "_R2.fastq.gz"
+  }
+}
