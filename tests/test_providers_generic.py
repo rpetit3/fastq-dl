@@ -219,9 +219,7 @@ class TestGetRunInfo:
 
     @patch("fastq_dl.providers.generic.get_ena_metadata")
     @patch("time.sleep")
-    def test_200_empty_only_provider_ena_raises_immediately(
-        self, mock_sleep, mock_ena
-    ):
+    def test_200_empty_only_provider_ena_raises_immediately(self, mock_sleep, mock_ena):
         """Test that ENA 200-empty with --only-provider raises EmptyResultError immediately."""
         mock_ena.return_value = (
             False,

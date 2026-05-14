@@ -7,12 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### TODO
+## [3.1.0]
 
-- consider refactoring more
-- consider adding back aspera support (now available from bioconda)
-- support SRATools >3.1.1 (will require `prefetch` -> `fasterq-dump`)
-- Support poetry >1.3
+### Added
+
+- `--skip-compression` option to skip pigz compression of SRA downloads
+- `--check` option to verify required external tools are installed
+- Custom exception hierarchy with structured exit codes (1=error, 2=not found, 3=partial)
+- `catalog.json` and `llms.txt` for machine-readable project metadata and AI discovery
+
+### Changed
+
+- Require Python >=3.10 and <3.14
+- Require pysradb >=2.3
+- Default `--cpus` changed from 1 to 4
+- Default `--max-attempts` changed from 10 to 3
+- Replaced `executor` dependency with native `subprocess`
+- All subprocess commands use list form instead of shell strings (security improvement)
+- Replaced `black`, `isort`, and `flake8` with `ruff`
+- Refactored provider fallback logic with proper primary/secondary provider ordering
+- Centralized file suffix constants
+
+### Removed
+
+- Docker and Gitpod support
+
+[3.1.0]: https://github.com/rpetit3/fastq-dl/compare/v3.0.1...v3.1.0
 
 ## [3.0.1]
 

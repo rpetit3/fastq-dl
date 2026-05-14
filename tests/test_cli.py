@@ -473,6 +473,65 @@ class TestExitCodes:
         assert result.exit_code == 0
 
 
+class TestCheckDependencies:
+    """Tests for --check flag."""
+
+    @pytest.fixture
+    def runner(self):
+        return CliRunner()
+
+    @patch("fastq_dl.cli.download.shutil.which")
+    def test_check_all_found(self, mock_which, runner):
+        """Test --check when all tools are installed."""
+        mock_which.side_effect = lambda tool: f"/usr/bin/{tool}"
+        result = runner.invoke(fastqdl, ["--check"])
+        assert result.exit_code == 0
+        assert "All dependencies found." in result.output
+        assert "wget: Found (/usr/bin/wget)" in result.output
+        assert "prefetch: Found (/usr/bin/prefetch)" in result.output
+        assert "fasterq-dump: Found (/usr/bin/fasterq-dump)" in result.output
+        assert "vdb-config: Found (/usr/bin/vdb-config)" in result.output
+        assert "pigz: Found (/usr/bin/pigz)" in result.output
+
+    @patch("fastq_dl.cli.download.shutil.which")
+    def test_check_some_missing(self, mock_which, runner):
+        """Test --check when some tools are missing."""
+
+        def which_side_effect(tool):
+            if tool in ("prefetch", "fasterq-dump", "vdb-config"):
+                return None
+            return f"/usr/bin/{tool}"
+
+        mock_which.side_effect = which_side_effect
+        result = runner.invoke(fastqdl, ["--check"])
+        assert result.exit_code == 1
+        assert "Some dependencies are missing." in result.output
+        assert "prefetch: Not found" in result.output
+        assert "wget: Found" in result.output
+
+    @patch("fastq_dl.cli.download.shutil.which")
+    def test_check_all_missing(self, mock_which, runner):
+        """Test --check when no tools are installed."""
+        mock_which.return_value = None
+        result = runner.invoke(fastqdl, ["--check"])
+        assert result.exit_code == 1
+        assert "Some dependencies are missing." in result.output
+
+    @patch("fastq_dl.cli.download.shutil.which", return_value="/usr/bin/tool")
+    def test_check_does_not_require_accession(self, mock_which, runner):
+        """Test that --check works without --accession."""
+        result = runner.invoke(fastqdl, ["--check"])
+        assert result.exit_code == 0
+        assert "Missing option" not in result.output
+
+    @patch("fastq_dl.cli.download.shutil.which", return_value="/usr/bin/tool")
+    def test_check_output_grouped_by_provider(self, mock_which, runner):
+        """Test that --check output groups tools by provider."""
+        result = runner.invoke(fastqdl, ["--check"])
+        assert "ENA:" in result.output
+        assert "SRA:" in result.output
+
+
 class TestMainFunction:
     """Tests for main() entry point."""
 

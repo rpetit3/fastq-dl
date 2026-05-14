@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import logging
+import shutil
 import sys
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from fastq_dl.constants import (
     ENA,
     ENA_FAILED,
     ENA_NO_FASTQS,
+    EXTERNAL_DEPENDENCIES,
     MERGED_R1_SUFFIX,
     MERGED_R2_SUFFIX,
     RUN_INFO_SUFFIX,
@@ -72,6 +74,7 @@ click.rich_click.OPTION_GROUPS = {
                 "--force",
                 "--silent",
                 "--sleep",
+                "--check",
                 "--version",
                 "--verbose",
                 "--help",
@@ -81,8 +84,46 @@ click.rich_click.OPTION_GROUPS = {
 }
 
 
+def _check_dependencies(ctx, param, value):
+    if not value or ctx.resilient_parsing:
+        return
+
+    all_found = True
+    click.echo("Checking dependencies...")
+
+    for provider, tools in EXTERNAL_DEPENDENCIES.items():
+        click.echo(f"{provider}:")
+        for tool in tools:
+            path = shutil.which(tool)
+            if path:
+                click.echo(f"  {tool}: Found ({path})")
+            else:
+                click.echo(f"  {tool}: Not found")
+                all_found = False
+
+    click.echo()
+    if all_found:
+        click.echo("All dependencies found.")
+    else:
+        click.echo(
+            "Some dependencies are missing. "
+            "Install via conda: conda install -c bioconda -c conda-forge "
+            "wget sra-tools pigz"
+        )
+
+    ctx.exit(0 if all_found else 1)
+
+
 @click.command()
 @click.version_option(fastq_dl.__version__, "--version", "-V")
+@click.option(
+    "--check",
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=_check_dependencies,
+    help="Check that required external tools are installed and exit.",
+)
 @click.option(
     "-a",
     "--accession",

@@ -1,6 +1,8 @@
 {
     "cSpell.words": [
         "addopts",
+        "Bactopia",
+        "Bioconda",
         "bioinformatics",
         "biosample",
         "conftest",
@@ -17,20 +19,26 @@
         "isort",
         "justfile",
         "llms",
+        "NCBI",
         "newprovider",
         "pigz",
         "PRJDA",
+        "PRJDB",
         "PRJEB",
         "PRJNA",
         "pycache",
         "pyproject",
         "pysradb",
         "pytest",
+        "rpetit",
         "SAMD",
+        "SAMEA",
         "SAMN",
         "shlex",
+        "taiki",
         "testpaths",
         "unioned",
+        "unittests",
         "virtualenvs"
     ]
 }

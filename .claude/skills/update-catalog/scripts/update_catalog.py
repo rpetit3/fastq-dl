@@ -9,6 +9,7 @@ dependencies, constants, and exception hierarchy. Outputs:
 Usage:
     python .claude/skills/update-catalog/scripts/update_catalog.py
 """
+
 import ast
 import json
 from datetime import datetime, timezone
@@ -112,7 +113,12 @@ def parse_docstring_args(docstring: str) -> dict[str, str]:
             continue
 
         # Detect end of section (new section header like "Returns:", "Raises:", etc.)
-        if in_args_section and stripped and stripped.endswith(":") and not stripped.startswith("-"):
+        if (
+            in_args_section
+            and stripped
+            and stripped.endswith(":")
+            and not stripped.startswith("-")
+        ):
             word = stripped.rstrip(":")
             if word and word[0].isupper() and " " not in word:
                 in_args_section = False
@@ -149,7 +155,7 @@ def parse_docstring_args(docstring: str) -> dict[str, str]:
 
                 if colon_pos is not None:
                     name_part = stripped[:colon_pos].strip()
-                    desc_part = stripped[colon_pos + 1:].strip()
+                    desc_part = stripped[colon_pos + 1 :].strip()
                     # Extract just the arg name (strip type annotation in parens)
                     arg_name = name_part.split("(")[0].strip().split(",")[0].strip()
                     current_arg = arg_name
@@ -252,9 +258,7 @@ def parse_module(filepath: Path) -> dict:
     tree = ast.parse(source, filename=str(filepath))
 
     rel_path = filepath.relative_to(PROJECT_ROOT)
-    module_name = (
-        str(rel_path).replace("/", ".").replace("\\", ".").removesuffix(".py")
-    )
+    module_name = str(rel_path).replace("/", ".").replace("\\", ".").removesuffix(".py")
 
     module_info = {
         "path": str(rel_path),
@@ -454,7 +458,11 @@ def generate_llms_txt(catalog: dict) -> str:
     module_lines = []
     for mod_name, mod_info in sorted(catalog["modules"].items()):
         path = mod_info["path"]
-        desc = mod_info.get("description", "").split("\n")[0] if mod_info.get("description") else ""
+        desc = (
+            mod_info.get("description", "").split("\n")[0]
+            if mod_info.get("description")
+            else ""
+        )
         funcs = list(mod_info.get("functions", {}).keys())
         classes = list(mod_info.get("classes", {}).keys())
 
@@ -463,9 +471,13 @@ def generate_llms_txt(catalog: dict) -> str:
         if desc:
             module_lines.append(f"- **Description**: {desc}")
         if funcs:
-            module_lines.append(f"- **Functions**: {', '.join(f'`{f}`' for f in funcs)}")
+            module_lines.append(
+                f"- **Functions**: {', '.join(f'`{f}`' for f in funcs)}"
+            )
         if classes:
-            module_lines.append(f"- **Classes**: {', '.join(f'`{c}`' for c in classes)}")
+            module_lines.append(
+                f"- **Classes**: {', '.join(f'`{c}`' for c in classes)}"
+            )
         module_lines.append("")
 
     # Build CLI options table
@@ -508,89 +520,97 @@ def generate_llms_txt(catalog: dict) -> str:
         tool_lines.append(f"- `{tool['name']}` — {tool['purpose']}{pkg}")
 
     sections = [
-        f"# fastq-dl",
-        f"",
+        "# fastq-dl",
+        "",
         f"> {description}",
-        f"",
+        "",
         f"- **Version**: {version}",
         f"- **Repository**: {repo}",
         f"- **License**: {catalog['license']}",
         f"- **Python**: {catalog['python_requires']}",
         f"- **Modules**: {len(catalog['modules'])} | **Functions**: {total_functions} | **Classes**: {total_classes}",
-        f"",
-        f"## Architecture",
-        f"",
-        f"fastq-dl follows a 3-layer architecture:",
-        f"",
-        f"1. **CLI Layer** (`fastq_dl/cli/download.py`): Click-based command-line interface that parses",
-        f"   arguments, sets up logging, and orchestrates the download workflow.",
-        f"",
-        f"2. **Provider Layer** (`fastq_dl/providers/`): Handles metadata queries and file downloads from",
-        f"   ENA and SRA. Includes automatic fallback between providers with configurable retry logic.",
-        f"   - `generic.py` — Provider coordination, fallback orchestration",
-        f"   - `ena.py` — ENA Data Warehouse API queries, wget-based FTP/HTTPS downloads",
-        f"   - `sra.py` — SRA queries via pysradb, prefetch + fasterq-dump downloads",
-        f"",
-        f"3. **Utilities Layer** (`fastq_dl/utils.py`): Subprocess execution with retries, MD5 checksums,",
-        f"   FASTQ merging, accession validation, and TSV output.",
-        f"",
-        f"### Data Flow",
-        f"",
-        f"```",
-        f"CLI (accession input)",
-        f" → validate_query() → accession type regex check",
-        f" → get_run_info()   → query primary provider, fallback to secondary",
-        f" → _download_with_fallback() → download FASTQs per run",
-        f" → merge_runs() (optional) → concatenate grouped FASTQs",
-        f" → write_tsv() → output metadata files",
-        f"```",
-        f"",
-        f"## Module Index",
-        f"",
+        "",
+        "## Architecture",
+        "",
+        "fastq-dl follows a 3-layer architecture:",
+        "",
+        "1. **CLI Layer** (`fastq_dl/cli/download.py`): Click-based command-line interface that parses",
+        "   arguments, sets up logging, and orchestrates the download workflow.",
+        "",
+        "2. **Provider Layer** (`fastq_dl/providers/`): Handles metadata queries and file downloads from",
+        "   ENA and SRA. Includes automatic fallback between providers with configurable retry logic.",
+        "   - `generic.py` — Provider coordination, fallback orchestration",
+        "   - `ena.py` — ENA Data Warehouse API queries, wget-based FTP/HTTPS downloads",
+        "   - `sra.py` — SRA queries via pysradb, prefetch + fasterq-dump downloads",
+        "",
+        "3. **Utilities Layer** (`fastq_dl/utils.py`): Subprocess execution with retries, MD5 checksums,",
+        "   FASTQ merging, accession validation, and TSV output.",
+        "",
+        "### Data Flow",
+        "",
+        "```",
+        "CLI (accession input)",
+        " → validate_query() → accession type regex check",
+        " → get_run_info()   → query primary provider, fallback to secondary",
+        " → _download_with_fallback() → download FASTQs per run",
+        " → merge_runs() (optional) → concatenate grouped FASTQs",
+        " → write_tsv() → output metadata files",
+        "```",
+        "",
+        "## Module Index",
+        "",
     ]
     sections.extend(module_lines)
-    sections.extend([
-        f"## CLI Options",
-        f"",
-        f"| Option | Default | Description |",
-        f"|--------|---------|-------------|",
-    ])
+    sections.extend(
+        [
+            "## CLI Options",
+            "",
+            "| Option | Default | Description |",
+            "|--------|---------|-------------|",
+        ]
+    )
     sections.extend(cli_lines)
-    sections.extend([
-        f"",
-        f"## Exception Hierarchy",
-        f"",
-        f"All exceptions inherit from `FastqDLError`:",
-        f"",
-    ])
+    sections.extend(
+        [
+            "",
+            "## Exception Hierarchy",
+            "",
+            "All exceptions inherit from `FastqDLError`:",
+            "",
+        ]
+    )
     sections.extend(exc_lines)
-    sections.extend([
-        f"",
-        f"Exit codes: `1` = validation/provider/download error, `2` = empty/not found/missing, `3` = partial download",
-        f"",
-        f"## External Tool Dependencies",
-        f"",
-    ])
+    sections.extend(
+        [
+            "",
+            "Exit codes: `1` = validation/provider/download error, `2` = empty/not found/missing, `3` = partial download",
+            "",
+            "## External Tool Dependencies",
+            "",
+        ]
+    )
     sections.extend(tool_lines)
-    sections.extend([
-        f"",
-        f"## Development",
-        f"",
-        f"```bash",
-        f"poetry install          # Install dependencies",
-        f"just test-cov           # Unit tests with 70% coverage minimum",
-        f"just test-integration   # Integration tests (real API calls)",
-        f"just fmt                # Format with ruff",
-        f"just check              # Format + lint check",
-        f"just build              # Build package",
-        f"```",
-        f"",
-        f"## Machine-Readable Metadata",
-        f"",
-        f"See `catalog.json` for structured project metadata including detailed function signatures,",
-        f"CLI option definitions, dependency versions, and the complete exception hierarchy.",
-        f"",
-    ])
+    sections.extend(
+        [
+            "",
+            "## Development",
+            "",
+            "```bash",
+            "poetry install          # Install dependencies",
+            "just test-cov           # Unit tests with 70% coverage minimum",
+            "just test-integration   # Integration tests (real API calls)",
+            "just fmt                # Format with ruff",
+            "just check              # Format + lint check",
+            "just build              # Build package",
+            "```",
+            "",
+            "## Machine-Readable Metadata",
+            "",
+            "See `catalog.json` for structured project metadata including detailed function signatures,",
+            "CLI option definitions, dependency versions, and the complete exception hierarchy.",
+            "",
+        ]
+    )
 
     content = "\n".join(sections)
 
@@ -612,9 +632,7 @@ def main():
 
     # Summary
     n_modules = len(catalog["modules"])
-    n_functions = sum(
-        len(m.get("functions", {})) for m in catalog["modules"].values()
-    )
+    n_functions = sum(len(m.get("functions", {})) for m in catalog["modules"].values())
     n_options = len(catalog["cli_options"])
     n_exceptions = len(catalog["exceptions"])
     print(

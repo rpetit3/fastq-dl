@@ -9,65 +9,99 @@ Download FASTQ files from the [European Nucleotide Archive](https://www.ebi.ac.u
 
 ## Introduction
 
-`fastq-dl` takes an ENA/SRA accession (Study, Sample, Experiment, or Run) and queries ENA (via
+`fastq-dl` takes an ENA/SRA accession (Bioproject/Study, Biosample/Sample, Experiment, or Run) and queries ENA (via
 [Data Warehouse API](https://www.ebi.ac.uk/ena/browse/search-rest)) to determine the associated
 metadata. It then downloads FASTQ files for each Run. For Samples or Experiments with multiple
 Runs, users can optionally merge the runs.
 
 ## Installation
 
+## Dependencies
+
+`fastq-dl` depends on the following:
+
+```{yaml}
+    - pigz
+    - pip
+    - python >=3.10
+    - pysradb >=2.3
+    - sra-tools >=3.0.1
+    - wget
+```
+
 ### Bioconda
 
 `fastq-dl` is available from [Bioconda](https://bioconda.github.io/) and I highly recommend you
-go this route to for installation.
+go this route to for installation, as it will handle dependencies as well.
 
 ```{bash}
 conda create -n fastq-dl -c conda-forge -c bioconda fastq-dl
 conda activate fastq-dl 
 ```
 
+### PyPi
+
+`fastq-dl` is also available from [PyPi](https://pypi.org/project/fastq-dl/), so you can
+use `pip` to install it.
+
+_**Note:** You will need to ensure you have installed the dependencies._
+
+```{bash}
+pip install fastq-dl
+fastq-dl --version
+fastq-dl --help
+fastq-dl --check
+```
+
 ## Usage
 
 ```{bash}
 fastq-dl --help
-
- Usage: fastq-dl [OPTIONS]                                                                     
-
- Download FASTQ files from ENA or SRA.                                                         
-
-╭─ Required Options ──────────────────────────────────────────────────────────────────────────╮
-│ *  --accession  -a  TEXT  ENA/SRA accession to query. (Study, Sample, Experiment, Run       │
-│                           accession)                                                        │
-│                           [required]                                                        │
-╰─────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Download Options ──────────────────────────────────────────────────────────────────────────╮
-│ --provider                    [ena|sra]  Specify which provider (ENA or SRA) to use.        │
-│                                          [default: ena]                                     │
-│ --group-by-experiment                    Group Runs by experiment accession.                │
-│ --group-by-sample                        Group Runs by sample accession.                    │
-│ --max-attempts            -m  INTEGER    Maximum number of download attempts. [default: 10] │
-│ --sra-lite                               Set preference to SRA Lite                         │
-│ --only-provider                          Only attempt download from specified provider.     │
-│ --only-download-metadata                 Skip FASTQ downloads, and retrieve only the        │
-│                                          metadata.                                          │
-│ --ignore                  -I             Ignore MD5 checksums for downloaded files.         │
-╰─────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Additional Options ────────────────────────────────────────────────────────────────────────╮
-│ --outdir   -o  TEXT     Directory to output downloads to. [default: ./]                     │
-│ --prefix       TEXT     Prefix to use for naming log files. [default: fastq]                │
-│ --cpus         INTEGER  Total cpus used for downloading from SRA. [default: 1]              │
-│ --force    -F           Overwrite existing files.                                           │
-│ --silent                Only critical errors will be printed.                               │
-│ --sleep    -s  INTEGER  Minimum amount of time to sleep between retries (API query and      │
-│                         download)                                                           │
-│                         [default: 10]                                                       │
-│ --version  -V           Show the version and exit.                                          │
-│ --verbose  -v           Print debug related text.                                           │
-│ --help     -h           Show this message and exit.                                         │
-╰─────────────────────────────────────────────────────────────────────────────────────────────╯
+                                                                                     
+ Usage: fastq-dl [OPTIONS]                                                           
+                                                                                     
+ Download FASTQ files from ENA or SRA.                                               
+                                                                                     
+╭─ Required Options ────────────────────────────────────────────────────────────────╮
+│ *  --accession  -a  TEXT  ENA/SRA accession to query. (Study, Sample, Experiment, │
+│                           Run accession) [required]                               │
+╰───────────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Options ────────────────────────────────────────────────────────────────╮
+│ --provider          [ena|sra]    Specify which provider (ENA or SRA) to use.      │
+│                                  [default: ena]                                   │
+│ --protocol          [ftp|https]  Protocol to use for ENA downloads. [default:     │
+│                                  ftp]                                             │
+│ --sra-lite                       Set preference to SRA Lite                       │
+│ --skip-compression               Skip pigz compression of SRA downloads.          │
+╰───────────────────────────────────────────────────────────────────────────────────╯
+╭─ Download Options ────────────────────────────────────────────────────────────────╮
+│ --max-attempts            -m  INTEGER  Maximum number of download attempts.       │
+│                                        [default: 3]                               │
+│ --only-provider                        Only attempt download from specified       │
+│                                        provider.                                  │
+│ --only-download-metadata               Skip FASTQ downloads, and retrieve only    │
+│                                        the metadata.                              │
+│ --group-by-experiment                  Group Runs by experiment accession.        │
+│ --group-by-sample                      Group Runs by sample accession.            │
+│ --ignore                  -I           Ignore MD5 checksums for downloaded files. │
+╰───────────────────────────────────────────────────────────────────────────────────╯
+╭─ Additional Options ──────────────────────────────────────────────────────────────╮
+│ --outdir   -o  TEXT     Directory to output downloads to. [default: ./]           │
+│ --prefix       TEXT     Prefix to use for naming log files. [default: fastq]      │
+│ --cpus         INTEGER  Total cpus used for downloading from SRA. [default: 4]    │
+│ --force    -F           Overwrite existing files.                                 │
+│ --silent                Only critical errors will be printed.                     │
+│ --sleep    -s  INTEGER  Minimum amount of time to sleep between retries (API      │
+│                         query and download) [default: 10]                         │
+│ --check                 Check that required external tools are installed and      │
+│                         exit.                                                     │
+│ --version  -V           Show the version and exit.                                │
+│ --verbose  -v           Print debug related text.                                 │
+│ --help     -h           Show this message and exit.                               │
+╰───────────────────────────────────────────────────────────────────────────────────╯
 ```
 
-*fastq-dl* requires a single ENA/SRA Study, Sample, Experiment, or Run accession and FASTQs
+`fastq-dl` requires a single ENA/SRA Study, Sample, Experiment, or Run accession and FASTQs
 for all Runs that fall under the given accession will be downloaded. For example, if a Study
 accession is given all Runs under that studies umbrella will be downloaded. By default,
 `fastq-dl` will try to download from ENA first, then SRA.
@@ -117,6 +151,14 @@ SRA Normalized is the original format with full base quality scores and SRA Lite
 due to simplifying the quality scores to a uniform Q30. By default the preference will be
 set to SRA Normalized, if you prefer SRA Lite you can use `--sra-lite` to set the
 preference to SRA Lite.
+
+### --skip-compression
+
+By default, FASTQs downloaded from SRA are compressed using `pigz` to save space. However,
+this can be time consuming (especially for large files!). You can use the `--skip-compression`
+option to skip this step and save time at the cost of disk space.
+
+_This option is ignored for ENA downloads as they are already provided as GZip compressed files._
 
 ## Output Files
 
@@ -190,10 +232,12 @@ The above command would download the Run SRR1178105 from SRA. Run accessions are
 line (1-to-1 relationship), so you will always get the expected Run.
 
 ## Motivation
-`fastq-dl`, is a spin-off of [ena-dl](https://github.com/rpetit3/ena-dl) (*pre-2017*), that has
+`fastq-dl`, is a spin-off of [ena-dl](https://github.com/rpetit3/ena-dl) (_pre-2017_), that has
 been developed for usage with [Bactopia](https://github.com/bactopia/bactopia). With this in
 mind, EBI/NCBI and provide their own tools ([enaBrowserTools](https://github.com/enasequence/enaBrowserTools)
 and [SRA Toolkit](https://github.com/ncbi/sra-tools)) that offer more extensive access to
 their databases.
 
-*AI tools were used in the development of this project.*
+## Disclaimer
+
+_AI tools were used in the development of this project._

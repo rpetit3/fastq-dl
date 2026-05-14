@@ -28,3 +28,9 @@ SE_SUFFIX_UNCOMPRESSED = ".fastq"
 # Merged FASTQ suffixes
 MERGED_R1_SUFFIX = "_R1.fastq.gz"
 MERGED_R2_SUFFIX = "_R2.fastq.gz"
+
+# External tool dependencies grouped by provider
+EXTERNAL_DEPENDENCIES = {
+    "ENA": ["wget"],
+    "SRA": ["prefetch", "fasterq-dump", "vdb-config", "pigz"],
+}
