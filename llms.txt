@@ -6,7 +6,7 @@
 - **Repository**: https://github.com/rpetit3/fastq-dl
 - **License**: MIT
 - **Python**: >=3.10,<3.14
-- **Modules**: 8 | **Functions**: 17 | **Classes**: 8
+- **Modules**: 8 | **Functions**: 18 | **Classes**: 8
 
 ## Architecture
 
@@ -43,7 +43,7 @@ CLI (accession input)
 
 ### fastq_dl.cli.download
 - **Path**: `fastq_dl/cli/download.py`
-- **Functions**: `fastqdl`, `_run_download`, `_download_with_fallback`, `main`
+- **Functions**: `_check_dependencies`, `fastqdl`, `_run_download`, `_download_with_fallback`, `main`
 
 ### fastq_dl.constants
 - **Path**: `fastq_dl/constants.py`
@@ -74,6 +74,7 @@ CLI (accession input)
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `--check` | off | Check that required external tools are installed and exit. |
 | `--accession` (`-a`) | required | ENA/SRA accession to query. (Study, Sample, Experiment, Run accession) |
 | `--provider` | ena | Specify which provider (ENA or SRA) to use. |
 | `--group-by-experiment` | off | Group Runs by experiment accession. |

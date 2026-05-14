@@ -6,7 +6,7 @@
   "homepage": "https://github.com/rpetit3/fastq-dl",
   "license": "MIT",
   "python_requires": ">=3.10,<3.14",
-  "generated_at": "2026-05-14T17:49:17.631990+00:00",
+  "generated_at": "2026-05-14T19:33:13.894122+00:00",
   "modules": {
     "fastq_dl.__init__": {
       "path": "fastq_dl/__init__.py",
@@ -21,6 +21,23 @@
       "module": "fastq_dl.cli.download",
       "description": "",
       "functions": {
+        "_check_dependencies": {
+          "name": "_check_dependencies",
+          "description": "",
+          "args": [
+            {
+              "name": "ctx"
+            },
+            {
+              "name": "param"
+            },
+            {
+              "name": "value"
+            }
+          ],
+          "returns": null,
+          "lineno": 87
+        },
         "fastqdl": {
           "name": "fastqdl",
           "description": "Download FASTQ files from ENA or SRA.",
@@ -116,7 +133,7 @@
             }
           ],
           "returns": null,
-          "lineno": 188
+          "lineno": 229
         },
         "_run_download": {
           "name": "_run_download",
@@ -219,7 +236,7 @@
             }
           ],
           "returns": "None",
-          "lineno": 272
+          "lineno": 313
         },
         "_download_with_fallback": {
           "name": "_download_with_fallback",
@@ -294,14 +311,14 @@
             }
           ],
           "returns": "tuple",
-          "lineno": 432
+          "lineno": 473
         },
         "main": {
           "name": "main",
           "description": "",
           "args": [],
           "returns": null,
-          "lineno": 529
+          "lineno": 570
         }
       },
       "classes": {},
@@ -330,7 +347,18 @@
         "PE_R2_SUFFIX_UNCOMPRESSED": "_2.fastq",
         "SE_SUFFIX_UNCOMPRESSED": ".fastq",
         "MERGED_R1_SUFFIX": "_R1.fastq.gz",
-        "MERGED_R2_SUFFIX": "_R2.fastq.gz"
+        "MERGED_R2_SUFFIX": "_R2.fastq.gz",
+        "EXTERNAL_DEPENDENCIES": {
+          "ENA": [
+            "wget"
+          ],
+          "SRA": [
+            "prefetch",
+            "fasterq-dump",
+            "vdb-config",
+            "pigz"
+          ]
+        }
       }
     },
     "fastq_dl.exceptions": {
@@ -490,16 +518,28 @@
       "functions": {
         "get_ena_metadata": {
           "name": "get_ena_metadata",
-          "description": "Fetch metadata from ENA.\nhttps://docs.google.com/document/d/1CwoY84MuZ3SdKYocqssumghBF88PWxUZ/edit#heading=h.ag0eqy2wfin5\n\nArgs:\n    query (str): The query to search for.\n\nReturns:\n    list: Records associated with the accession.",
+          "description": "Fetch metadata from ENA.\nhttps://docs.google.com/document/d/1CwoY84MuZ3SdKYocqssumghBF88PWxUZ/edit#heading=h.ag0eqy2wfin5\n\nArgs:\n    query (str): The query to search for.\n    max_attempts (int): Maximum number of query attempts. Defaults to 3.\n    sleep (int): Seconds to wait between retry attempts. Defaults to 10.\n\nReturns:\n    list: Records associated with the accession.",
           "args": [
             {
               "name": "query",
               "annotation": "str",
               "description": "The query to search for."
+            },
+            {
+              "name": "max_attempts",
+              "annotation": "int",
+              "description": "Maximum number of query attempts. Defaults to 3.",
+              "default": "3"
+            },
+            {
+              "name": "sleep",
+              "annotation": "int",
+              "description": "Seconds to wait between retry attempts. Defaults to 10.",
+              "default": "10"
             }
           ],
           "returns": "list",
-          "lineno": 18
+          "lineno": 19
         },
         "ena_download": {
           "name": "ena_download",
@@ -547,7 +587,7 @@
             }
           ],
           "returns": "Union[dict, str]",
-          "lineno": 52
+          "lineno": 67
         },
         "download_ena_fastq": {
           "name": "download_ena_fastq",
@@ -600,7 +640,7 @@
             }
           ],
           "returns": "Union[str, str]",
-          "lineno": 132
+          "lineno": 147
         }
       },
       "classes": {},
@@ -674,16 +714,28 @@
       "functions": {
         "get_sra_metadata": {
           "name": "get_sra_metadata",
-          "description": "Fetch metadata from SRA.\n\nArgs:\n    query (str): The accession to search for.\n\nReturns:\n    list: Records associated with the accession.",
+          "description": "Fetch metadata from SRA.\n\nArgs:\n    query (str): The accession to search for.\n    max_attempts (int): Maximum number of query attempts. Defaults to 3.\n    sleep (int): Seconds to wait between retry attempts. Defaults to 10.\n\nReturns:\n    list: Records associated with the accession.",
           "args": [
             {
               "name": "query",
               "annotation": "str",
               "description": "The accession to search for."
+            },
+            {
+              "name": "max_attempts",
+              "annotation": "int",
+              "description": "Maximum number of query attempts. Defaults to 3.",
+              "default": "3"
+            },
+            {
+              "name": "sleep",
+              "annotation": "int",
+              "description": "Seconds to wait between retry attempts. Defaults to 10.",
+              "default": "10"
             }
           ],
           "returns": "list",
-          "lineno": 22
+          "lineno": 23
         },
         "sra_download": {
           "name": "sra_download",
@@ -742,7 +794,7 @@
             }
           ],
           "returns": "Union[dict, str]",
-          "lineno": 41
+          "lineno": 55
         }
       },
       "classes": {},
@@ -881,6 +933,11 @@
     }
   },
   "cli_options": [
+    {
+      "name": "--check",
+      "is_flag": true,
+      "help": "Check that required external tools are installed and exit."
+    },
     {
       "name": "--accession",
       "short": "-a",
@@ -1167,6 +1224,17 @@
     "PE_R2_SUFFIX_UNCOMPRESSED": "_2.fastq",
     "SE_SUFFIX_UNCOMPRESSED": ".fastq",
     "MERGED_R1_SUFFIX": "_R1.fastq.gz",
-    "MERGED_R2_SUFFIX": "_R2.fastq.gz"
+    "MERGED_R2_SUFFIX": "_R2.fastq.gz",
+    "EXTERNAL_DEPENDENCIES": {
+      "ENA": [
+        "wget"
+      ],
+      "SRA": [
+        "prefetch",
+        "fasterq-dump",
+        "vdb-config",
+        "pigz"
+      ]
+    }
   }
 }
