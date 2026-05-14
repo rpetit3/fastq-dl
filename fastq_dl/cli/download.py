@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import logging
+import shutil
 import sys
 from pathlib import Path
 
@@ -8,7 +9,30 @@ import rich_click as click
 from rich.logging import RichHandler
 
 import fastq_dl
-from fastq_dl.constants import ENA, ENA_FAILED, SRA, SRA_FAILED
+from fastq_dl.constants import (
+    ENA,
+    ENA_FAILED,
+    ENA_NO_FASTQS,
+    EXTERNAL_DEPENDENCIES,
+    MERGED_R1_SUFFIX,
+    MERGED_R2_SUFFIX,
+    RUN_INFO_SUFFIX,
+    RUN_MERGERS_SUFFIX,
+    SE_SUFFIX,
+    SRA,
+    SRA_DOWNLOAD_FAILED,
+    SRA_FAILED,
+)
+from fastq_dl.exceptions import (
+    AccessionNotFoundError,
+    DownloadError,
+    EmptyResultError,
+    FastqDLError,
+    MissingFastqsError,
+    PartialDownloadError,
+    ProviderError,
+    ValidationError,
+)
 from fastq_dl.providers.ena import ena_download
 from fastq_dl.providers.generic import get_run_info
 from fastq_dl.providers.sra import sra_download
@@ -22,17 +46,23 @@ click.rich_click.OPTION_GROUPS = {
             "options": ["--accession"],
         },
         {
-            "name": "Download Options",
+            "name": "Provider Options",
             "options": [
                 "--provider",
-                "--group-by-experiment",
-                "--group-by-sample",
-                "--max-attempts",
+                "--protocol",
                 "--sra-lite",
+                "--skip-compression",
+            ],
+        },
+        {
+            "name": "Download Options",
+            "options": [
+                "--max-attempts",
                 "--only-provider",
                 "--only-download-metadata",
+                "--group-by-experiment",
+                "--group-by-sample",
                 "--ignore",
-                "--protocol"
             ],
         },
         {
@@ -44,6 +74,7 @@ click.rich_click.OPTION_GROUPS = {
                 "--force",
                 "--silent",
                 "--sleep",
+                "--check",
                 "--version",
                 "--verbose",
                 "--help",
@@ -53,8 +84,46 @@ click.rich_click.OPTION_GROUPS = {
 }
 
 
+def _check_dependencies(ctx, param, value):
+    if not value or ctx.resilient_parsing:
+        return
+
+    all_found = True
+    click.echo("Checking dependencies...")
+
+    for provider, tools in EXTERNAL_DEPENDENCIES.items():
+        click.echo(f"{provider}:")
+        for tool in tools:
+            path = shutil.which(tool)
+            if path:
+                click.echo(f"  {tool}: Found ({path})")
+            else:
+                click.echo(f"  {tool}: Not found")
+                all_found = False
+
+    click.echo()
+    if all_found:
+        click.echo("All dependencies found.")
+    else:
+        click.echo(
+            "Some dependencies are missing. "
+            "Install via conda: conda install -c bioconda -c conda-forge "
+            "wget sra-tools pigz"
+        )
+
+    ctx.exit(0 if all_found else 1)
+
+
 @click.command()
 @click.version_option(fastq_dl.__version__, "--version", "-V")
+@click.option(
+    "--check",
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=_check_dependencies,
+    help="Check that required external tools are installed and exit.",
+)
 @click.option(
     "-a",
     "--accession",
@@ -97,7 +166,7 @@ click.rich_click.OPTION_GROUPS = {
 @click.option(
     "--max-attempts",
     "-m",
-    default=10,
+    default=3,
     show_default=True,
     help="Maximum number of download attempts.",
 )
@@ -126,12 +195,17 @@ click.rich_click.OPTION_GROUPS = {
     default="ftp",
     show_default=True,
     help="Protocol to use for ENA downloads.",
-    type=click.Choice(['ftp', 'https'], case_sensitive=False)
+    type=click.Choice(["ftp", "https"], case_sensitive=False),
 )
 @click.option(
     "--sra-lite",
     is_flag=True,
     help="Set preference to SRA Lite",
+)
+@click.option(
+    "--skip-compression",
+    is_flag=True,
+    help="Skip pigz compression of SRA downloads.",
 )
 @click.option(
     "--only-provider",
@@ -145,7 +219,7 @@ click.rich_click.OPTION_GROUPS = {
 )
 @click.option(
     "--cpus",
-    default=1,
+    default=4,
     show_default=True,
     help="Total cpus used for downloading from SRA.",
 )
@@ -164,26 +238,106 @@ def fastqdl(
     force,
     ignore_md5,
     sra_lite,
+    skip_compression,
     only_provider,
     only_download_metadata,
     cpus,
     silent,
     verbose,
-    protocol
+    protocol,
 ):
     """Download FASTQ files from ENA or SRA."""
-    # Setup logs
-    logging.basicConfig(
-        format="%(asctime)s:%(name)s:%(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        handlers=[
-            RichHandler(rich_tracebacks=True, console=rich.console.Console(stderr=True))
-        ],
-    )
+    # Setup logs only if no handlers are already configured (allows library usage)
+    root_logger = logging.getLogger()
+    if not root_logger.handlers:
+        logging.basicConfig(
+            format="%(message)s",
+            handlers=[
+                RichHandler(
+                    rich_tracebacks=True,
+                    console=rich.console.Console(stderr=True),
+                    log_time_format="%Y-%m-%d %H:%M:%S",
+                )
+            ],
+        )
 
-    logging.getLogger().setLevel(
+    root_logger.setLevel(
         logging.ERROR if silent else logging.DEBUG if verbose else logging.INFO
     )
+
+    try:
+        _run_download(
+            accession=accession,
+            provider=provider,
+            group_by_experiment=group_by_experiment,
+            group_by_sample=group_by_sample,
+            outdir=outdir,
+            prefix=prefix,
+            max_attempts=max_attempts,
+            sleep=sleep,
+            force=force,
+            ignore_md5=ignore_md5,
+            sra_lite=sra_lite,
+            skip_compression=skip_compression,
+            only_provider=only_provider,
+            only_download_metadata=only_download_metadata,
+            cpus=cpus,
+            protocol=protocol,
+        )
+    except ValidationError as e:
+        logging.error(str(e))
+        sys.exit(1)
+    except ProviderError as e:
+        logging.error(f"Provider error ({e.provider}): {e}")
+        sys.exit(1)
+    except EmptyResultError as e:
+        logging.error(str(e))
+        sys.exit(2)
+    except DownloadError as e:
+        logging.error(f"Download error: {e}")
+        sys.exit(1)
+    except AccessionNotFoundError as e:
+        logging.error(str(e))
+        sys.exit(2)
+    except MissingFastqsError as e:
+        logging.error(str(e))
+        sys.exit(2)
+    except PartialDownloadError as e:
+        logging.error(str(e))
+        sys.exit(3)
+    except FastqDLError as e:
+        logging.error(f"Error: {e}")
+        sys.exit(1)
+
+
+def _run_download(
+    accession: str,
+    provider: str,
+    group_by_experiment: bool,
+    group_by_sample: bool,
+    outdir: str,
+    prefix: str,
+    max_attempts: int,
+    sleep: int,
+    force: bool,
+    ignore_md5: bool,
+    sra_lite: bool,
+    skip_compression: bool,
+    only_provider: bool,
+    only_download_metadata: bool,
+    cpus: int,
+    protocol: str = "ftp",
+) -> None:
+    """Internal function that performs the actual download logic.
+
+    This function contains the core download logic and may raise FastqDLError
+    subclasses which are caught by the CLI wrapper.
+
+    Raises:
+        ValidationError: If the accession is invalid.
+        ProviderError: If there's an error querying ENA/SRA.
+        DownloadError: If there's an error downloading files.
+    """
     # Start Download Process
     query = validate_query(accession)
     data_from, ena_data = get_run_info(
@@ -196,20 +350,24 @@ def fastqdl(
     )
 
     logging.info(f"Query: {accession}")
-    logging.info(f"Archive: {provider}")
+    logging.info(f"Archive: {data_from}")
     if only_download_metadata:
         logging.info(f"Total Runs Found: {len(ena_data)}")
         logging.debug("--only-download-metadata used, skipping FASTQ downloads")
     else:
         logging.info(f"Total Runs To Download: {len(ena_data)}")
     downloaded = {}
+    successful_runs = []
+    failed_runs = []
+    failure_reasons = {}
     runs = {} if group_by_experiment or group_by_sample else None
-    outdir = Path.cwd() if outdir == "./" else f"{outdir}"
+    outdir = Path(outdir).resolve() if outdir else Path.cwd()
 
     if only_download_metadata:
-        Path(outdir).mkdir(parents=True, exist_ok=True)
-        logging.info(f"Writing metadata to {outdir}/{prefix}-run-info.tsv")
-        write_tsv(ena_data, f"{outdir}/{prefix}-run-info.tsv")
+        outdir.mkdir(parents=True, exist_ok=True)
+        run_info_path = outdir / f"{prefix}{RUN_INFO_SUFFIX}"
+        logging.info(f"Writing metadata to {run_info_path}")
+        write_tsv(ena_data, str(run_info_path))
     else:
         for i, run_info in enumerate(ena_data):
             run_acc = run_info["run_accession"]
@@ -220,69 +378,38 @@ def fastqdl(
                     f"Duplicate run {run_acc} found, skipping re-download..."
                 )
                 continue
-            logging.info(f"\tWorking on run {run_acc}...")
+            logging.info(f"Working on run {run_acc}...")
+
+            # Determine primary provider and whether fallback is allowed
             if provider.lower() == "ena" and data_from == ENA:
-                fastqs = ena_download(
-                    run_info,
-                    outdir,
-                    max_attempts=max_attempts,
-                    force=force,
-                    ignore_md5=ignore_md5,
-                    sleep=sleep,
-                    protocol=protocol
-                )
-
-                if fastqs == ENA_FAILED:
-                    if only_provider:
-                        logging.error(f"\tNo fastqs found in ENA for {run_acc}")
-                        ena_data[i]["error"] = ENA_FAILED
-                        fastqs = None
-                    else:
-                        # Retry download from SRA
-                        logging.info(f"\t{run_acc} not found on ENA, retrying from SRA")
-
-                        fastqs = sra_download(
-                            run_acc,
-                            outdir,
-                            cpus=cpus,
-                            max_attempts=max_attempts,
-                            sleep=sleep,
-                            sra_lite=sra_lite,
-                        )
-                        if fastqs == SRA_FAILED:
-                            logging.error(f"\t{run_acc} not found on SRA")
-                            ena_data[i]["error"] = f"{ENA_FAILED}&{SRA_FAILED}"
-                            fastqs = None
+                primary = "ena"
+                no_fallback = only_provider
             else:
-                fastqs = sra_download(
-                    run_acc,
-                    outdir,
-                    cpus=cpus,
-                    max_attempts=max_attempts,
-                    sleep=sleep,
-                    sra_lite=sra_lite,
-                )
-                if fastqs == SRA_FAILED:
-                    if only_provider or data_from == SRA:
-                        logging.error(f"\t{run_acc} not found on SRA or ENA")
-                        ena_data[i]["error"] = SRA_FAILED
-                        fastqs = None
-                    else:
-                        # Retry download from ENA
-                        logging.info(f"\t{run_acc} not found on SRA, retrying from ENA")
-                        fastqs = ena_download(
-                            run_info,
-                            outdir,
-                            max_attempts=max_attempts,
-                            force=force,
-                            ignore_md5=ignore_md5,
-                            sleep=sleep,
-                            protocol=protocol
-                        )
-                        if fastqs == ENA_FAILED:
-                            logging.error(f"\tNo fastqs found in ENA for {run_acc}")
-                            ena_data[i]["error"] = f"{SRA_FAILED}&{ENA_FAILED}"
-                            fastqs = None
+                primary = "sra"
+                no_fallback = only_provider or data_from == SRA
+
+            fastqs, error = _download_with_fallback(
+                run_info=run_info,
+                run_acc=run_acc,
+                outdir=str(outdir),
+                primary_provider=primary,
+                only_provider=no_fallback,
+                max_attempts=max_attempts,
+                force=force,
+                ignore_md5=ignore_md5,
+                sleep=sleep,
+                cpus=cpus,
+                sra_lite=sra_lite,
+                skip_compression=skip_compression,
+                protocol=protocol,
+            )
+
+            if error:
+                ena_data[i]["error"] = error
+                failed_runs.append(run_acc)
+                failure_reasons[run_acc] = error
+            else:
+                successful_runs.append(run_acc)
 
             # Add the download results
             if fastqs:
@@ -303,24 +430,141 @@ def fastqdl(
         # If applicable, merge runs
         if runs:
             for name, vals in runs.items():
-                if len(vals["r1"]) and len(vals["r2"]):
-                    # Not all runs labeled as paired are actually paired.
-                    if len(vals["r1"]) == len(vals["r2"]):
-                        logging.info(f"\tMerging paired end runs to {name}...")
-                        merge_runs(vals["r1"], f"{outdir}/{name}_R1.fastq.gz")
-                        merge_runs(vals["r2"], f"{outdir}/{name}_R2.fastq.gz")
-                    else:
-                        logging.info("\tMerging single end runs to experiment...")
-                        merge_runs(vals["r1"], f"{outdir}/{name}.fastq.gz")
+                # Check if we have valid paired-end data (both r1 and r2 with equal counts)
+                if vals["r1"] and vals["r2"] and len(vals["r1"]) == len(vals["r2"]):
+                    logging.info(f"Merging paired end runs to {name}...")
+                    merge_runs(vals["r1"], str(outdir / f"{name}{MERGED_R1_SUFFIX}"))
+                    merge_runs(vals["r2"], str(outdir / f"{name}{MERGED_R2_SUFFIX}"))
                 else:
-                    logging.info("\tMerging single end runs to experiment...")
-                    merge_runs(vals["r1"], f"{outdir}/{name}.fastq.gz")
-            logging.info(
-                f"Writing merged run info to {outdir}/{prefix}-run-mergers.tsv"
+                    # Single-end merge (covers no r2, empty r2, or mismatched counts)
+                    logging.info("Merging single end runs to experiment...")
+                    merge_runs(vals["r1"], str(outdir / f"{name}{SE_SUFFIX}"))
+            run_mergers_path = outdir / f"{prefix}{RUN_MERGERS_SUFFIX}"
+            logging.info(f"Writing merged run info to {run_mergers_path}")
+            write_tsv(runs, str(run_mergers_path))
+        run_info_path = outdir / f"{prefix}{RUN_INFO_SUFFIX}"
+        logging.info(f"Writing metadata to {run_info_path}")
+        write_tsv(ena_data, str(run_info_path))
+
+        if failed_runs and not successful_runs:
+            if any("NO_FASTQS" in r for r in failure_reasons.values()):
+                raise MissingFastqsError(
+                    f"FASTQ files not available for {len(failed_runs)} run(s): "
+                    f"{', '.join(failed_runs)}. The archive may not have "
+                    "finished syncing these accession(s).",
+                    failed_runs=failed_runs,
+                )
+            else:
+                raise AccessionNotFoundError(
+                    f"{len(failed_runs)} run(s) not found on any provider: "
+                    f"{', '.join(failed_runs)}",
+                    failed_runs=failed_runs,
+                )
+        elif failed_runs and successful_runs:
+            raise PartialDownloadError(
+                f"Downloaded {len(successful_runs)} of "
+                f"{len(successful_runs) + len(failed_runs)} runs. "
+                f"Failed: {', '.join(failed_runs)}",
+                failed_runs=failed_runs,
+                successful_runs=successful_runs,
             )
-            write_tsv(runs, f"{outdir}/{prefix}-run-mergers.tsv")
-        logging.info(f"Writing metadata to {outdir}/{prefix}-run-info.tsv")
-        write_tsv(ena_data, f"{outdir}/{prefix}-run-info.tsv")
+
+
+def _download_with_fallback(
+    run_info: dict,
+    run_acc: str,
+    outdir: str,
+    primary_provider: str,
+    only_provider: bool,
+    max_attempts: int,
+    force: bool,
+    ignore_md5: bool,
+    sleep: int,
+    cpus: int,
+    sra_lite: bool,
+    skip_compression: bool,
+    protocol: str = "ftp",
+) -> tuple:
+    """Download FASTQs with fallback to alternate provider.
+
+    Args:
+        run_info: Dictionary containing run metadata (needed for ENA download)
+        run_acc: Run accession string
+        outdir: Output directory
+        primary_provider: 'ena' or 'sra' - which provider to try first
+        only_provider: If True, do not fallback to alternate provider
+        max_attempts: Maximum download attempts
+        force: Overwrite existing files
+        ignore_md5: Skip MD5 verification
+        sleep: Sleep time between retries
+        cpus: Number of CPUs for SRA download
+        sra_lite: Use SRA Lite format
+        protocol: Protocol for ENA downloads (ftp or https)
+
+    Returns:
+        tuple: (fastqs dict or None, error string or None)
+    """
+
+    def _ena():
+        return ena_download(
+            run_info,
+            outdir,
+            max_attempts=max_attempts,
+            force=force,
+            ignore_md5=ignore_md5,
+            sleep=sleep,
+            protocol=protocol,
+        )
+
+    def _sra():
+        return sra_download(
+            run_acc,
+            outdir,
+            cpus=cpus,
+            max_attempts=max_attempts,
+            force=force,
+            ignore_md5=ignore_md5,
+            sleep=sleep,
+            sra_lite=sra_lite,
+            compress=not skip_compression,
+        )
+
+    ena_failures = {ENA_FAILED, ENA_NO_FASTQS}
+    sra_failures = {SRA_FAILED, SRA_DOWNLOAD_FAILED}
+
+    if primary_provider.lower() == "ena":
+        primary_download = _ena
+        primary_failures = ena_failures
+        fallback_download = _sra
+        fallback_failures = sra_failures
+        primary_name, fallback_name = "ENA", "SRA"
+    else:
+        primary_download = _sra
+        primary_failures = sra_failures
+        fallback_download = _ena
+        fallback_failures = ena_failures
+        primary_name, fallback_name = "SRA", "ENA"
+
+    # Try primary provider
+    fastqs = primary_download()
+
+    if isinstance(fastqs, str) and fastqs in primary_failures:
+        if only_provider:
+            logging.error(f"{run_acc} not found on {primary_name}")
+            return None, fastqs
+
+        # Fallback to alternate provider
+        logging.info(
+            f"{run_acc} not found on {primary_name}, retrying from {fallback_name}"
+        )
+        primary_error = fastqs
+        fastqs = fallback_download()
+
+        if isinstance(fastqs, str) and fastqs in fallback_failures:
+            logging.error(f"{run_acc} not found on {fallback_name}")
+            return None, f"{primary_error}&{fastqs}"
+
+    return fastqs, None
 
 
 def main():

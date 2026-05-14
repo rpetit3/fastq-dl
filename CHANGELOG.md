@@ -7,12 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### TODO
+## [3.1.0] - 2026-05-14
 
-- consider refactoring more
-- consider adding back aspera support (now available from bioconda)
-- support SRATools >3.1.1 (will require `prefetch` -> `fasterq-dump`)
-- Support poetry >1.3
+### Added
+
+- `--skip-compression` option to skip pigz compression of SRA downloads
+- `--check` option to verify required external tools are installed
+- Custom exception hierarchy with structured exit codes (1=error, 2=not found, 3=partial)
+- `catalog.json` and `llms.txt` for machine-readable project metadata and AI discovery
+- retries when querying SRA/ENA for metadata
+
+### Changed
+
+- Require Python >=3.10 and <3.14
+- Require pysradb >=2.3
+- Default `--cpus` changed from 1 to 4
+- Default `--max-attempts` changed from 10 to 3
+- Replaced `executor` dependency with native `subprocess`
+- Replaced `black`, `isort`, and `flake8` with `ruff`
+- Refactored provider fallback logic with proper primary/secondary provider ordering
+- Centralized file suffix constants
+
+### Removed
+
+- Docker and Gitpod support
+    - Gitpod is not what it was in the past
+    - Docker container is built via Bioconda
+
+[3.1.0]: https://github.com/rpetit3/fastq-dl/compare/v3.0.1...v3.1.0
 
 ## [3.0.1]
 
@@ -99,7 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deprecated `--sra_only` parameter is now removed
 - `--ftp_only` no longer required without Aspera support
 - Non-functioning `--debug` option
-- Uneeded logging levels
+- Unneeded logging levels
 
 [2.0.0]: https://github.com/rpetit3/fastq-dl/compare/v1.2.0...v2.0.0
 [pysradb]: https://github.com/saketkc/pysradb

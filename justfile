@@ -2,19 +2,18 @@ PROJECT := "fastq-dl"
 OPEN := if os() == "macos" { "open" } else { "xdg-open" }
 VERSION := `poetry version -s`
 
-# format code with black and isort
+# format code with ruff
 fmt:
-    poetry run black .
-    poetry run isort .
+    poetry run ruff format .
+    poetry run ruff check --fix .
 
-# check format of code with black and isort
+# check format of code with ruff
 check-fmt:
-    poetry run black --check .
-    poetry run isort --check .
+    poetry run ruff format --check .
 
-# lint code with flake8
+# lint code with ruff
 lint:
-    poetry run flake8 .
+    poetry run ruff check .
 
 # install latest version with poetry
 install:
@@ -35,3 +34,23 @@ build:
 # run the unit tests
 test args="":
     poetry run pytest {{ args }}
+
+# run unit tests with coverage
+test-cov args="":
+    poetry run pytest tests/ \
+        --cov=fastq_dl \
+        --cov-report=term-missing \
+        --cov-report=html \
+        --cov-fail-under=70 \
+        -m "not integration" \
+        {{ args }}
+
+# run only integration tests (makes real API calls)
+test-integration args="":
+    poetry run pytest tests/ \
+        -m "integration" \
+        {{ args }}
+
+# open coverage report in browser
+coverage-report:
+    {{ OPEN }} htmlcov/index.html

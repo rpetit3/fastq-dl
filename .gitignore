@@ -1,5 +1,7 @@
 *.fastq.gz
-*.json
 .idea
 __pycache__
 test-*
+fastq-*.tsv
+.coverage
+test/
