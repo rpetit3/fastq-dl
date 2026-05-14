@@ -41,10 +41,10 @@ def get_run_info(
 
     # Configure primary/secondary provider order for fallback path
     def _fetch_ena():
-        return get_ena_metadata(query)
+        return get_ena_metadata(query, max_attempts=max_attempts, sleep=sleep)
 
     def _fetch_sra():
-        return get_sra_metadata(accession)
+        return get_sra_metadata(accession, max_attempts=max_attempts, sleep=sleep)
 
     def _is_sra_empty(data):
         return not data
@@ -70,7 +70,9 @@ def get_run_info(
             )
             logging.debug(f"--only-provider supplied, limiting queries to {provider}")
             if provider.lower() == "ena":
-                success, ena_data = get_ena_metadata(query)
+                success, ena_data = get_ena_metadata(
+                    query, max_attempts=max_attempts, sleep=sleep
+                )
                 if success:
                     return ENA, ena_data
                 elif _is_ena_empty_response(ena_data):
@@ -88,7 +90,9 @@ def get_run_info(
                         else None,
                     )
             else:
-                success, sra_data = get_sra_metadata(accession)
+                success, sra_data = get_sra_metadata(
+                    accession, max_attempts=max_attempts, sleep=sleep
+                )
                 if success:
                     return SRA, sra_data
                 elif not sra_data:
