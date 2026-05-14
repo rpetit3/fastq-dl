@@ -121,7 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deprecated `--sra_only` parameter is now removed
 - `--ftp_only` no longer required without Aspera support
 - Non-functioning `--debug` option
-- Uneeded logging levels
+- Unneeded logging levels
 
 [2.0.0]: https://github.com/rpetit3/fastq-dl/compare/v1.2.0...v2.0.0
 [pysradb]: https://github.com/saketkc/pysradb

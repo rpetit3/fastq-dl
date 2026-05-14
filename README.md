@@ -9,7 +9,7 @@ Download FASTQ files from the [European Nucleotide Archive](https://www.ebi.ac.u
 
 ## Introduction
 
-`fastq-dl` takes an ENA/SRA accession (Bioproject/Study, Biosample/Sample, Experiment, or Run) and queries ENA (via
+`fastq-dl` takes an ENA/SRA accession (BioProject/Study, Biosample/Sample, Experiment, or Run) and queries ENA (via
 [Data Warehouse API](https://www.ebi.ac.uk/ena/browse/search-rest)) to determine the associated
 metadata. It then downloads FASTQ files for each Run. For Samples or Experiments with multiple
 Runs, users can optionally merge the runs.
