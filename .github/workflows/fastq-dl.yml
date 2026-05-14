@@ -35,6 +35,7 @@ jobs:
           activate-environment: fastq-dl
           environment-file: environment.yml
           auto-update-conda: true
+          conda-remove-defaults: "true"
 
       - name: Install fastq-dl
         run: just install
@@ -87,6 +88,7 @@ jobs:
           activate-environment: fastq-dl
           environment-file: environment.yml
           auto-update-conda: true
+          conda-remove-defaults: "true"
 
       - name: Install fastq-dl
         run: just install
