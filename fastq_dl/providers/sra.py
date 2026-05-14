@@ -2,6 +2,7 @@ import glob
 import logging
 import os
 import shutil
+import time
 from pathlib import Path
 from typing import Union
 
@@ -19,23 +20,36 @@ from fastq_dl.constants import (
 from fastq_dl.utils import execute
 
 
-def get_sra_metadata(query: str) -> list:
+def get_sra_metadata(query: str, max_attempts: int = 3, sleep: int = 10) -> list:
     """Fetch metadata from SRA.
 
     Args:
         query (str): The accession to search for.
+        max_attempts (int): Maximum number of query attempts. Defaults to 3.
+        sleep (int): Seconds to wait between retry attempts. Defaults to 10.
 
     Returns:
         list: Records associated with the accession.
     """
-    #
-    db = SRAweb()
-    df = db.search_sra(
-        query, detailed=True, sample_attribute=True, expand_sample_attributes=True
-    )
-    if df is None:
-        return [False, []]
-    return [True, df.to_dict(orient="records")]
+    for attempt in range(1, max_attempts + 1):
+        try:
+            db = SRAweb()
+            df = db.search_sra(
+                query,
+                detailed=True,
+                sample_attribute=True,
+                expand_sample_attributes=True,
+            )
+            if df is None:
+                return [False, []]
+            return [True, df.to_dict(orient="records")]
+        except Exception as e:
+            logging.warning(
+                f"pysradb query failed (Attempt {attempt} of {max_attempts}): {e}"
+            )
+            if attempt < max_attempts:
+                time.sleep(sleep)
+    return [False, []]
 
 
 def sra_download(

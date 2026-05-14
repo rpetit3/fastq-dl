@@ -1,4 +1,5 @@
 import logging
+import time
 from pathlib import Path
 from typing import Literal, Union
 
@@ -15,38 +16,52 @@ from fastq_dl.exceptions import DownloadError
 from fastq_dl.utils import execute, md5sum
 
 
-def get_ena_metadata(query: str) -> list:
+def get_ena_metadata(query: str, max_attempts: int = 3, sleep: int = 10) -> list:
     """Fetch metadata from ENA.
     https://docs.google.com/document/d/1CwoY84MuZ3SdKYocqssumghBF88PWxUZ/edit#heading=h.ag0eqy2wfin5
 
     Args:
         query (str): The query to search for.
+        max_attempts (int): Maximum number of query attempts. Defaults to 3.
+        sleep (int): Seconds to wait between retry attempts. Defaults to 10.
 
     Returns:
         list: Records associated with the accession.
     """
     url = f'{ENA_URL}&query="{query}"&fields=all'
     headers = {"Content-type": "application/x-www-form-urlencoded"}
-    r = requests.get(url, headers=headers, timeout=30)
-    if r.status_code == requests.codes.ok:
-        data = []
-        col_names = None
-        for line in r.text.split("\n"):
-            cols = line.split("\t")
-            if line:
-                if col_names:
-                    data.append(dict(zip(col_names, cols)))
+    for attempt in range(1, max_attempts + 1):
+        try:
+            r = requests.get(url, headers=headers, timeout=30)
+            if r.status_code == requests.codes.ok:
+                data = []
+                col_names = None
+                for line in r.text.split("\n"):
+                    cols = line.split("\t")
+                    if line:
+                        if col_names:
+                            data.append(dict(zip(col_names, cols)))
+                        else:
+                            col_names = cols
+                if data:
+                    return [True, data]
                 else:
-                    col_names = cols
-        if data:
-            return [True, data]
-        else:
-            return [
-                False,
-                [r.status_code, "Query was successful, but received an empty response"],
-            ]
-    else:
-        return [False, [r.status_code, r.text]]
+                    return [
+                        False,
+                        [
+                            r.status_code,
+                            "Query was successful, but received an empty response",
+                        ],
+                    ]
+            else:
+                return [False, [r.status_code, r.text]]
+        except Exception as e:
+            logging.warning(
+                f"ENA metadata query failed (Attempt {attempt} of {max_attempts}): {e}"
+            )
+            if attempt < max_attempts:
+                time.sleep(sleep)
+    return [False, [0, "All query attempts failed"]]
 
 
 def ena_download(

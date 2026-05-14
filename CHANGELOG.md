@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--check` option to verify required external tools are installed
 - Custom exception hierarchy with structured exit codes (1=error, 2=not found, 3=partial)
 - `catalog.json` and `llms.txt` for machine-readable project metadata and AI discovery
+- retries when querying SRA/ENA for metadata
 
 ### Changed
 
