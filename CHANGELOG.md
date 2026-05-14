@@ -23,7 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Default `--cpus` changed from 1 to 4
 - Default `--max-attempts` changed from 10 to 3
 - Replaced `executor` dependency with native `subprocess`
-- All subprocess commands use list form instead of shell strings (security improvement)
 - Replaced `black`, `isort`, and `flake8` with `ruff`
 - Refactored provider fallback logic with proper primary/secondary provider ordering
 - Centralized file suffix constants
@@ -31,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Docker and Gitpod support
+    - Gitpod is not what it was in the past
+    - Docker container is built via Bioconda
 
 [3.1.0]: https://github.com/rpetit3/fastq-dl/compare/v3.0.1...v3.1.0
 
