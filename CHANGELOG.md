@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Compatibility with rich 15+ by using explicit `from rich.console import Console` import
+
 ## [3.1.0] - 2026-05-14
 
 ### Added
