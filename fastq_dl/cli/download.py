@@ -4,8 +4,8 @@ import shutil
 import sys
 from pathlib import Path
 
-import rich
 import rich_click as click
+from rich.console import Console
 from rich.logging import RichHandler
 
 import fastq_dl
@@ -255,7 +255,7 @@ def fastqdl(
             handlers=[
                 RichHandler(
                     rich_tracebacks=True,
-                    console=rich.console.Console(stderr=True),
+                    console=Console(stderr=True),
                     log_time_format="%Y-%m-%d %H:%M:%S",
                 )
             ],
