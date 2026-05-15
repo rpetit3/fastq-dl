@@ -53,6 +53,7 @@ def sra_download(
     accession: str,
     outdir: str,
     cpus: int = 1,
+    connections: int = 8,
     max_attempts: int = 10,
     force: bool = False,
     no_strict: bool = False,
@@ -66,7 +67,8 @@ def sra_download(
     Args:
         accession: The accession to download associated FASTQs.
         outdir: Directory to write FASTQs to.
-        cpus: Number of CPUs for download and compression. Defaults to 1.
+        cpus: Number of CPUs for conversion and compression. Defaults to 1.
+        connections: HTTP connections per file for download. Defaults to 8.
         max_attempts: Maximum number of download attempts. Defaults to 10.
         force: Force overwrite of existing files.
         no_strict: Downgrade integrity failures to warnings.
@@ -112,7 +114,7 @@ def sra_download(
             "--threads",
             str(cpus),
             "--connections",
-            str(cpus),
+            str(connections),
             "--no-progress",
             "-y",
         ]

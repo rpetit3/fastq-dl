@@ -72,6 +72,7 @@ click.rich_click.OPTION_GROUPS = {
                 "--outdir",
                 "--prefix",
                 "--cpus",
+                "--connections",
                 "--force",
                 "--silent",
                 "--sleep",
@@ -229,7 +230,13 @@ def _check_dependencies(ctx, param, value):
     "--cpus",
     default=4,
     show_default=True,
-    help="Total cpus used for downloading from SRA.",
+    help="Total cpus used for SRA conversion and compression.",
+)
+@click.option(
+    "--connections",
+    default=8,
+    show_default=True,
+    help="HTTP connections per file for SRA downloads.",
 )
 @click.option("--silent", is_flag=True, help="Only critical errors will be printed.")
 @click.option("--verbose", "-v", is_flag=True, help="Print debug related text.")
@@ -251,6 +258,7 @@ def fastqdl(
     only_provider,
     only_download_metadata,
     cpus,
+    connections,
     silent,
     verbose,
     protocol,
@@ -292,6 +300,7 @@ def fastqdl(
             only_provider=only_provider,
             only_download_metadata=only_download_metadata,
             cpus=cpus,
+            connections=connections,
             protocol=protocol,
         )
     except ValidationError as e:
@@ -337,6 +346,7 @@ def _run_download(
     only_provider: bool,
     only_download_metadata: bool,
     cpus: int,
+    connections: int,
     protocol: str = "ftp",
 ) -> None:
     """Internal function that performs the actual download logic.
@@ -410,6 +420,7 @@ def _run_download(
                 ignore_md5=ignore_md5,
                 sleep=sleep,
                 cpus=cpus,
+                connections=connections,
                 sra_lite=sra_lite,
                 skip_compression=skip_compression,
                 gzip_level=gzip_level,
@@ -493,6 +504,7 @@ def _download_with_fallback(
     ignore_md5: bool,
     sleep: int,
     cpus: int,
+    connections: int,
     sra_lite: bool,
     skip_compression: bool,
     gzip_level: int,
@@ -536,6 +548,7 @@ def _download_with_fallback(
             run_acc,
             outdir,
             cpus=cpus,
+            connections=connections,
             max_attempts=max_attempts,
             force=force,
             no_strict=ignore_md5,

@@ -143,7 +143,7 @@ Exit codes: `1` = validation/provider/download error, `2` = empty result/not fou
 - `sra_download(accession, outdir, ...)` — Uses sracha get for download, conversion, and compression
 
 ### utils.py
-- `execute(cmd, ...)` — Subprocess wrapper with retries and SRA-specific error handling (exit code 3 = not found)
+- `execute(cmd, ...)` — Subprocess wrapper with retries and SRA-specific stderr-based not-found detection
 - `md5sum(fastq)` — Calculates MD5 in 10MB chunks
 - `merge_runs(runs, output)` — Concatenates FASTQs, validates all files exist first
 - `validate_query(query)` — Regex validation for accession types (Project, Study, BioSample, Sample, Experiment, Run)

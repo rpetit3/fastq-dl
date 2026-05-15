@@ -205,7 +205,7 @@ class TestSraDownload:
 
     @patch("fastq_dl.providers.sra.execute")
     def test_cpus_parameter(self, mock_execute, tmp_outdir):
-        """Test cpus parameter is passed to sracha as --threads and --connections."""
+        """Test cpus parameter is passed to sracha as --threads."""
         se = tmp_outdir / "SRR123456.fastq.gz"
 
         def create_output_files(*args, **kwargs):
@@ -217,11 +217,27 @@ class TestSraDownload:
         sra_download("SRR123456", str(tmp_outdir), cpus=4)
 
         cmd = mock_execute.call_args_list[0][0][0]
-        assert "sracha" in cmd
+        threads_idx = cmd.index("--threads")
+        assert cmd[threads_idx + 1] == "4"
+
+    @patch("fastq_dl.providers.sra.execute")
+    def test_connections_parameter(self, mock_execute, tmp_outdir):
+        """Test connections parameter is passed to sracha as --connections."""
+        se = tmp_outdir / "SRR123456.fastq.gz"
+
+        def create_output_files(*args, **kwargs):
+            se.write_bytes(b"reads")
+            return 0
+
+        mock_execute.side_effect = create_output_files
+
+        sra_download("SRR123456", str(tmp_outdir), cpus=4, connections=12)
+
+        cmd = mock_execute.call_args_list[0][0][0]
         threads_idx = cmd.index("--threads")
         assert cmd[threads_idx + 1] == "4"
         connections_idx = cmd.index("--connections")
-        assert cmd[connections_idx + 1] == "4"
+        assert cmd[connections_idx + 1] == "12"
 
     @patch("fastq_dl.providers.sra.execute")
     def test_no_strict_passes_flag(self, mock_execute, tmp_outdir):
