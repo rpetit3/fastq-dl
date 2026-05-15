@@ -332,6 +332,45 @@ class TestCLIOptions:
 
         assert result.exit_code == 0
 
+    @patch("fastq_dl.cli.download.validate_query")
+    @patch("fastq_dl.cli.download.get_run_info")
+    @patch("fastq_dl.cli.download.write_tsv")
+    def test_gzip_level_flag(
+        self, mock_write_tsv, mock_get_run_info, mock_validate_query, runner, tmp_path
+    ):
+        """Test --gzip-level flag is accepted with valid value."""
+        mock_validate_query.return_value = "run_accession=SRR123456"
+        mock_get_run_info.return_value = ("ENA", [])
+
+        result = runner.invoke(
+            fastqdl,
+            [
+                "--accession",
+                "SRR123456",
+                "--gzip-level",
+                "6",
+                "--only-download-metadata",
+                "--outdir",
+                str(tmp_path),
+            ],
+        )
+
+        assert result.exit_code == 0
+
+    def test_gzip_level_invalid(self, runner):
+        """Test --gzip-level rejects out-of-range values."""
+        result = runner.invoke(
+            fastqdl,
+            ["--accession", "SRR123456", "--gzip-level", "0"],
+        )
+        assert result.exit_code != 0
+
+        result = runner.invoke(
+            fastqdl,
+            ["--accession", "SRR123456", "--gzip-level", "10"],
+        )
+        assert result.exit_code != 0
+
 
 class TestExitCodes:
     """Tests for exit codes on download failures."""
