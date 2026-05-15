@@ -67,7 +67,6 @@ class TestSraDownload:
         """Test successful paired-end download from SRA."""
         mock_execute.return_value = 0
 
-        # Create mock output files that would be created by fasterq-dump
         pe1 = tmp_outdir / "SRR123456_1.fastq.gz"
         pe2 = tmp_outdir / "SRR123456_2.fastq.gz"
         pe1.write_bytes(b"read1")
@@ -85,7 +84,6 @@ class TestSraDownload:
         """Test successful single-end download from SRA."""
         mock_execute.return_value = 0
 
-        # Create mock output file
         se = tmp_outdir / "SRR123456.fastq.gz"
         se.write_bytes(b"reads")
 
@@ -100,10 +98,9 @@ class TestSraDownload:
         """Test paired-end download with orphan reads file."""
         mock_execute.return_value = 0
 
-        # Create mock output files including orphan reads
         pe1 = tmp_outdir / "SRR123456_1.fastq.gz"
         pe2 = tmp_outdir / "SRR123456_2.fastq.gz"
-        se = tmp_outdir / "SRR123456.fastq.gz"  # Orphan reads
+        se = tmp_outdir / "SRR123456.fastq.gz"
         pe1.write_bytes(b"read1")
         pe2.write_bytes(b"read2")
         se.write_bytes(b"orphan_reads")
@@ -116,8 +113,8 @@ class TestSraDownload:
         assert result["orphan"] == str(se)
 
     @patch("fastq_dl.providers.sra.execute")
-    def test_prefetch_failure(self, mock_execute, tmp_outdir):
-        """Test handling of prefetch command failure."""
+    def test_download_failure(self, mock_execute, tmp_outdir):
+        """Test handling of sracha command failure."""
         mock_execute.return_value = SRA_FAILED
 
         result = sra_download("SRR123456", str(tmp_outdir))
@@ -126,49 +123,38 @@ class TestSraDownload:
 
     @patch("fastq_dl.providers.sra.execute")
     def test_sra_lite_preference(self, mock_execute, tmp_outdir):
-        """Test --sra-lite flag sets correct preference."""
+        """Test --sra-lite flag passes --format sralite to sracha."""
         se = tmp_outdir / "SRR123456.fastq.gz"
-        sra_file = tmp_outdir / "SRR123456.sra"
 
         def create_output_files(*args, **kwargs):
             se.write_bytes(b"reads")
-            sra_file.write_bytes(b"sra")
             return 0
 
         mock_execute.side_effect = create_output_files
 
         sra_download("SRR123456", str(tmp_outdir), sra_lite=True)
 
-        # Check that vdb-config was called with 'yes'
-        calls = [
-            c[0][0] for c in mock_execute.call_args_list
-        ]  # Get first positional arg of each call
-        assert any(
-            isinstance(c, list) and "vdb-config" in c and "yes" in c for c in calls
-        )
+        cmd = mock_execute.call_args_list[0][0][0]
+        assert "sracha" in cmd
+        assert "--format" in cmd
+        assert "sralite" in cmd
 
     @patch("fastq_dl.providers.sra.execute")
     def test_sra_normalized_preference(self, mock_execute, tmp_outdir):
-        """Test default SRA Normalized preference."""
+        """Test default SRA Normalized preference (no --format sralite)."""
         se = tmp_outdir / "SRR123456.fastq.gz"
-        sra_file = tmp_outdir / "SRR123456.sra"
 
         def create_output_files(*args, **kwargs):
             se.write_bytes(b"reads")
-            sra_file.write_bytes(b"sra")
             return 0
 
         mock_execute.side_effect = create_output_files
 
         sra_download("SRR123456", str(tmp_outdir), sra_lite=False)
 
-        # Check that vdb-config was called with 'no'
-        calls = [
-            c[0][0] for c in mock_execute.call_args_list
-        ]  # Get first positional arg of each call
-        assert any(
-            isinstance(c, list) and "vdb-config" in c and "no" in c for c in calls
-        )
+        cmd = mock_execute.call_args_list[0][0][0]
+        assert "sracha" in cmd
+        assert "sralite" not in cmd
 
     def test_skip_existing_paired_files(self, tmp_outdir):
         """Test skipping download when paired files already exist."""
@@ -201,14 +187,9 @@ class TestSraDownload:
 
         pe1 = tmp_outdir / "SRR123456_1.fastq.gz"
         pe2 = tmp_outdir / "SRR123456_2.fastq.gz"
-        sra_file = tmp_outdir / "SRR123456.sra"
         pe1.write_bytes(b"old")
         pe2.write_bytes(b"old")
-        sra_file.write_bytes(
-            b"sra"
-        )  # Create .sra file that gets unlinked after download
 
-        # Create output files that would be created by fasterq-dump
         def create_output_files(*args, **kwargs):
             pe1.write_bytes(b"new")
             pe2.write_bytes(b"new")
@@ -218,89 +199,80 @@ class TestSraDownload:
 
         sra_download("SRR123456", str(tmp_outdir), force=True)
 
-        # execute should have been called since force=True
         assert mock_execute.called
-
-    @patch("fastq_dl.providers.sra.execute")
-    def test_fasterq_dump_failure(self, mock_execute, tmp_outdir):
-        """Test handling of fasterq-dump command failure."""
-        # First call (vdb-config) succeeds, second call (prefetch) succeeds,
-        # third call (fasterq-dump) fails
-        mock_execute.side_effect = [0, 0, SRA_FAILED]
-
-        result = sra_download("SRR123456", str(tmp_outdir))
-
-        assert result == SRA_FAILED
+        cmd = mock_execute.call_args_list[0][0][0]
+        assert "--force" in cmd
 
     @patch("fastq_dl.providers.sra.execute")
     def test_cpus_parameter(self, mock_execute, tmp_outdir):
-        """Test cpus parameter is passed to fasterq-dump."""
+        """Test cpus parameter is passed to sracha as --threads and --connections."""
         se = tmp_outdir / "SRR123456.fastq.gz"
-        sra_file = tmp_outdir / "SRR123456.sra"
 
         def create_output_files(*args, **kwargs):
             se.write_bytes(b"reads")
-            sra_file.write_bytes(b"sra")
             return 0
 
         mock_execute.side_effect = create_output_files
 
         sra_download("SRR123456", str(tmp_outdir), cpus=4)
 
-        # Get first positional arg of each call
-        calls = [c[0][0] for c in mock_execute.call_args_list]
-        # Check for fasterq-dump command with --threads and 4
-        assert any(
-            isinstance(c, list)
-            and "fasterq-dump" in c
-            and "--threads" in c
-            and "4" in c
-            for c in calls
-        )
+        cmd = mock_execute.call_args_list[0][0][0]
+        assert "sracha" in cmd
+        threads_idx = cmd.index("--threads")
+        assert cmd[threads_idx + 1] == "4"
+        connections_idx = cmd.index("--connections")
+        assert cmd[connections_idx + 1] == "4"
 
     @patch("fastq_dl.providers.sra.execute")
-    def test_ignore_md5_skips_verification(self, mock_execute, tmp_outdir):
-        """Test ignore_md5 flag adds --verify no to prefetch command."""
+    def test_no_strict_passes_flag(self, mock_execute, tmp_outdir):
+        """Test no_strict flag adds --no-strict to sracha command."""
         se = tmp_outdir / "SRR123456.fastq.gz"
-        sra_file = tmp_outdir / "SRR123456.sra"
 
         def create_output_files(*args, **kwargs):
             se.write_bytes(b"reads")
-            sra_file.write_bytes(b"sra")
             return 0
 
         mock_execute.side_effect = create_output_files
 
-        sra_download("SRR123456", str(tmp_outdir), ignore_md5=True)
+        sra_download("SRR123456", str(tmp_outdir), no_strict=True)
 
-        # Get all commands passed to execute
-        calls = [c[0][0] for c in mock_execute.call_args_list]
+        cmd = mock_execute.call_args_list[0][0][0]
+        assert "--no-strict" in cmd
 
-        # Find the prefetch command and verify --verify no is present
-        prefetch_calls = [c for c in calls if isinstance(c, list) and "prefetch" in c]
-        assert len(prefetch_calls) == 1
-        # Check that --verify is followed by no
-        prefetch_cmd = prefetch_calls[0]
-        verify_idx = prefetch_cmd.index("--verify")
-        assert prefetch_cmd[verify_idx + 1] == "no"
+    @patch("fastq_dl.providers.sra.execute")
+    def test_no_strict_not_passed_by_default(self, mock_execute, tmp_outdir):
+        """Test --no-strict is not passed when no_strict=False."""
+        se = tmp_outdir / "SRR123456.fastq.gz"
+
+        def create_output_files(*args, **kwargs):
+            se.write_bytes(b"reads")
+            return 0
+
+        mock_execute.side_effect = create_output_files
+
+        sra_download("SRR123456", str(tmp_outdir), no_strict=False)
+
+        cmd = mock_execute.call_args_list[0][0][0]
+        assert "--no-strict" not in cmd
 
     @patch("fastq_dl.providers.sra.execute")
     def test_skip_compress_produces_uncompressed_files(self, mock_execute, tmp_outdir):
-        """Test compress=False skips pigz and uses .fastq suffixes."""
-        mock_execute.return_value = 0
-
-        # Create mock uncompressed output files
+        """Test compress=False passes --no-gzip and uses .fastq suffixes."""
         se = tmp_outdir / "SRR123456.fastq"
-        se.write_bytes(b"reads")
+
+        def create_output_files(*args, **kwargs):
+            se.write_bytes(b"reads")
+            return 0
+
+        mock_execute.side_effect = create_output_files
 
         result = sra_download("SRR123456", str(tmp_outdir), compress=False)
 
         assert result["r1"] == str(se)
         assert result["single_end"] is True
         assert str(result["r1"]).endswith(".fastq")
-        # pigz should not have been called
-        calls = [c[0][0] for c in mock_execute.call_args_list]
-        assert not any(isinstance(c, str) and "pigz" in c for c in calls)
+        cmd = mock_execute.call_args_list[0][0][0]
+        assert "--no-gzip" in cmd
 
     @patch("fastq_dl.providers.sra.execute")
     def test_skip_compress_paired_end(self, mock_execute, tmp_outdir):
@@ -321,24 +293,55 @@ class TestSraDownload:
         assert str(result["r2"]).endswith("_2.fastq")
 
     @patch("fastq_dl.providers.sra.execute")
-    def test_md5_verification_enabled_by_default(self, mock_execute, tmp_outdir):
-        """Test MD5 verification is enabled by default (--verify yes)."""
+    def test_gzip_level_default(self, mock_execute, tmp_outdir):
+        """Test default gzip level (1) does not add --gzip-level flag."""
         se = tmp_outdir / "SRR123456.fastq.gz"
-        sra_file = tmp_outdir / "SRR123456.sra"
 
         def create_output_files(*args, **kwargs):
             se.write_bytes(b"reads")
-            sra_file.write_bytes(b"sra")
             return 0
 
         mock_execute.side_effect = create_output_files
 
-        sra_download("SRR123456", str(tmp_outdir), ignore_md5=False)
+        sra_download("SRR123456", str(tmp_outdir), gzip_level=1)
 
-        calls = [c[0][0] for c in mock_execute.call_args_list]
-        prefetch_calls = [c for c in calls if isinstance(c, list) and "prefetch" in c]
-        assert len(prefetch_calls) == 1
-        # Check that --verify is followed by yes
-        prefetch_cmd = prefetch_calls[0]
-        verify_idx = prefetch_cmd.index("--verify")
-        assert prefetch_cmd[verify_idx + 1] == "yes"
+        cmd = mock_execute.call_args_list[0][0][0]
+        assert "--gzip-level" not in cmd
+
+    @patch("fastq_dl.providers.sra.execute")
+    def test_gzip_level_custom(self, mock_execute, tmp_outdir):
+        """Test custom gzip level is passed to sracha."""
+        se = tmp_outdir / "SRR123456.fastq.gz"
+
+        def create_output_files(*args, **kwargs):
+            se.write_bytes(b"reads")
+            return 0
+
+        mock_execute.side_effect = create_output_files
+
+        sra_download("SRR123456", str(tmp_outdir), gzip_level=6)
+
+        cmd = mock_execute.call_args_list[0][0][0]
+        gzip_idx = cmd.index("--gzip-level")
+        assert cmd[gzip_idx + 1] == "6"
+
+    @patch("fastq_dl.providers.sra.execute")
+    def test_sracha_command_structure(self, mock_execute, tmp_outdir):
+        """Test the full sracha get command is constructed correctly."""
+        se = tmp_outdir / "SRR123456.fastq.gz"
+
+        def create_output_files(*args, **kwargs):
+            se.write_bytes(b"reads")
+            return 0
+
+        mock_execute.side_effect = create_output_files
+
+        sra_download("SRR123456", str(tmp_outdir), cpus=2)
+
+        cmd = mock_execute.call_args_list[0][0][0]
+        assert cmd[0] == "sracha"
+        assert cmd[1] == "get"
+        assert cmd[2] == "SRR123456"
+        assert "-O" in cmd
+        assert "--no-progress" in cmd
+        assert "-y" in cmd

@@ -52,6 +52,7 @@ click.rich_click.OPTION_GROUPS = {
                 "--protocol",
                 "--sra-lite",
                 "--skip-compression",
+                "--gzip-level",
             ],
         },
         {
@@ -108,7 +109,7 @@ def _check_dependencies(ctx, param, value):
         click.echo(
             "Some dependencies are missing. "
             "Install via conda: conda install -c bioconda -c conda-forge "
-            "wget sra-tools pigz"
+            "wget sracha"
         )
 
     ctx.exit(0 if all_found else 1)
@@ -188,7 +189,7 @@ def _check_dependencies(ctx, param, value):
     "--ignore",
     "ignore_md5",
     is_flag=True,
-    help="Ignore MD5 checksums for downloaded files.",
+    help="Skip MD5 validation (ENA) or relax integrity checks (SRA).",
 )
 @click.option(
     "--protocol",
@@ -205,7 +206,14 @@ def _check_dependencies(ctx, param, value):
 @click.option(
     "--skip-compression",
     is_flag=True,
-    help="Skip pigz compression of SRA downloads.",
+    help="Skip compression of SRA downloads.",
+)
+@click.option(
+    "--gzip-level",
+    default=1,
+    show_default=True,
+    type=click.IntRange(1, 9),
+    help="Gzip compression level for SRA downloads (1=fast, 9=best).",
 )
 @click.option(
     "--only-provider",
@@ -239,6 +247,7 @@ def fastqdl(
     ignore_md5,
     sra_lite,
     skip_compression,
+    gzip_level,
     only_provider,
     only_download_metadata,
     cpus,
@@ -279,6 +288,7 @@ def fastqdl(
             ignore_md5=ignore_md5,
             sra_lite=sra_lite,
             skip_compression=skip_compression,
+            gzip_level=gzip_level,
             only_provider=only_provider,
             only_download_metadata=only_download_metadata,
             cpus=cpus,
@@ -323,6 +333,7 @@ def _run_download(
     ignore_md5: bool,
     sra_lite: bool,
     skip_compression: bool,
+    gzip_level: int,
     only_provider: bool,
     only_download_metadata: bool,
     cpus: int,
@@ -401,6 +412,7 @@ def _run_download(
                 cpus=cpus,
                 sra_lite=sra_lite,
                 skip_compression=skip_compression,
+                gzip_level=gzip_level,
                 protocol=protocol,
             )
 
@@ -483,6 +495,7 @@ def _download_with_fallback(
     cpus: int,
     sra_lite: bool,
     skip_compression: bool,
+    gzip_level: int,
     protocol: str = "ftp",
 ) -> tuple:
     """Download FASTQs with fallback to alternate provider.
@@ -495,10 +508,12 @@ def _download_with_fallback(
         only_provider: If True, do not fallback to alternate provider
         max_attempts: Maximum download attempts
         force: Overwrite existing files
-        ignore_md5: Skip MD5 verification
+        ignore_md5: Skip MD5 verification (ENA) or relax integrity checks (SRA)
         sleep: Sleep time between retries
         cpus: Number of CPUs for SRA download
         sra_lite: Use SRA Lite format
+        skip_compression: Skip compression of SRA downloads
+        gzip_level: Gzip compression level for SRA downloads (1-9)
         protocol: Protocol for ENA downloads (ftp or https)
 
     Returns:
@@ -523,10 +538,11 @@ def _download_with_fallback(
             cpus=cpus,
             max_attempts=max_attempts,
             force=force,
-            ignore_md5=ignore_md5,
+            no_strict=ignore_md5,
             sleep=sleep,
             sra_lite=sra_lite,
             compress=not skip_compression,
+            gzip_level=gzip_level,
         )
 
     ena_failures = {ENA_FAILED, ENA_NO_FASTQS}

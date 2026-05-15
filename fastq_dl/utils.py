@@ -71,8 +71,7 @@ def execute(
             logging.debug(f"STDOUT: {e.stdout}")
             logging.debug(f"STDERR: {e.stderr}")
 
-            if is_sra and e.returncode == 3:
-                # The FASTQ isn't on SRA for some reason, try to download from ENA
+            if is_sra and e.stderr and "not found:" in e.stderr.lower():
                 error_msg = e.stderr.split("\n")[0] if e.stderr else "Unknown error"
                 logging.error(error_msg)
                 return SRA_FAILED
