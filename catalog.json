@@ -1,12 +1,12 @@
 {
   "name": "fastq-dl",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "description": "Download FASTQ files from SRA or ENA repositories.",
   "repository": "https://github.com/rpetit3/fastq-dl",
   "homepage": "https://github.com/rpetit3/fastq-dl",
   "license": "MIT",
   "python_requires": ">=3.10,<3.14",
-  "generated_at": "2026-05-14T19:33:13.894122+00:00",
+  "generated_at": "2026-05-15T20:06:52.897694+00:00",
   "modules": {
     "fastq_dl.__init__": {
       "path": "fastq_dl/__init__.py",
@@ -36,7 +36,7 @@
             }
           ],
           "returns": null,
-          "lineno": 87
+          "lineno": 89
         },
         "fastqdl": {
           "name": "fastqdl",
@@ -88,7 +88,7 @@
             },
             {
               "name": "ignore_md5",
-              "description": "Ignore MD5 checksums for downloaded files.",
+              "description": "Skip MD5 validation (ENA) or relax integrity checks (SRA).",
               "default": "False"
             },
             {
@@ -98,8 +98,13 @@
             },
             {
               "name": "skip_compression",
-              "description": "Skip pigz compression of SRA downloads.",
+              "description": "Skip compression of SRA downloads.",
               "default": "False"
+            },
+            {
+              "name": "gzip_level",
+              "description": "Gzip compression level for SRA downloads (1=fast, 9=best).",
+              "default": "1"
             },
             {
               "name": "only_provider",
@@ -113,8 +118,13 @@
             },
             {
               "name": "cpus",
-              "description": "Total cpus used for downloading from SRA.",
+              "description": "Total cpus used for SRA conversion and compression.",
               "default": "4"
+            },
+            {
+              "name": "connections",
+              "description": "HTTP connections per file for SRA downloads.",
+              "default": "8"
             },
             {
               "name": "silent",
@@ -133,7 +143,7 @@
             }
           ],
           "returns": null,
-          "lineno": 229
+          "lineno": 244
         },
         "_run_download": {
           "name": "_run_download",
@@ -195,7 +205,7 @@
             {
               "name": "ignore_md5",
               "annotation": "bool",
-              "description": "Ignore MD5 checksums for downloaded files.",
+              "description": "Skip MD5 validation (ENA) or relax integrity checks (SRA).",
               "default": "False"
             },
             {
@@ -207,8 +217,14 @@
             {
               "name": "skip_compression",
               "annotation": "bool",
-              "description": "Skip pigz compression of SRA downloads.",
+              "description": "Skip compression of SRA downloads.",
               "default": "False"
+            },
+            {
+              "name": "gzip_level",
+              "annotation": "int",
+              "description": "Gzip compression level for SRA downloads (1=fast, 9=best).",
+              "default": "1"
             },
             {
               "name": "only_provider",
@@ -225,8 +241,14 @@
             {
               "name": "cpus",
               "annotation": "int",
-              "description": "Total cpus used for downloading from SRA.",
+              "description": "Total cpus used for SRA conversion and compression.",
               "default": "4"
+            },
+            {
+              "name": "connections",
+              "annotation": "int",
+              "description": "HTTP connections per file for SRA downloads.",
+              "default": "8"
             },
             {
               "name": "protocol",
@@ -236,11 +258,11 @@
             }
           ],
           "returns": "None",
-          "lineno": 313
+          "lineno": 332
         },
         "_download_with_fallback": {
           "name": "_download_with_fallback",
-          "description": "Download FASTQs with fallback to alternate provider.\n\nArgs:\n    run_info: Dictionary containing run metadata (needed for ENA download)\n    run_acc: Run accession string\n    outdir: Output directory\n    primary_provider: 'ena' or 'sra' - which provider to try first\n    only_provider: If True, do not fallback to alternate provider\n    max_attempts: Maximum download attempts\n    force: Overwrite existing files\n    ignore_md5: Skip MD5 verification\n    sleep: Sleep time between retries\n    cpus: Number of CPUs for SRA download\n    sra_lite: Use SRA Lite format\n    protocol: Protocol for ENA downloads (ftp or https)\n\nReturns:\n    tuple: (fastqs dict or None, error string or None)",
+          "description": "Download FASTQs with fallback to alternate provider.\n\nArgs:\n    run_info: Dictionary containing run metadata (needed for ENA download)\n    run_acc: Run accession string\n    outdir: Output directory\n    primary_provider: 'ena' or 'sra' - which provider to try first\n    only_provider: If True, do not fallback to alternate provider\n    max_attempts: Maximum download attempts\n    force: Overwrite existing files\n    ignore_md5: Skip MD5 verification (ENA) or relax integrity checks (SRA)\n    sleep: Sleep time between retries\n    cpus: Number of CPUs for SRA download\n    sra_lite: Use SRA Lite format\n    skip_compression: Skip compression of SRA downloads\n    gzip_level: Gzip compression level for SRA downloads (1-9)\n    protocol: Protocol for ENA downloads (ftp or https)\n\nReturns:\n    tuple: (fastqs dict or None, error string or None)",
           "args": [
             {
               "name": "run_info",
@@ -280,7 +302,7 @@
             {
               "name": "ignore_md5",
               "annotation": "bool",
-              "description": "Skip MD5 verification"
+              "description": "Skip MD5 verification (ENA) or relax integrity checks (SRA)"
             },
             {
               "name": "sleep",
@@ -293,6 +315,12 @@
               "description": "Number of CPUs for SRA download"
             },
             {
+              "name": "connections",
+              "annotation": "int",
+              "description": "HTTP connections per file for SRA downloads.",
+              "default": "8"
+            },
+            {
               "name": "sra_lite",
               "annotation": "bool",
               "description": "Use SRA Lite format"
@@ -300,8 +328,12 @@
             {
               "name": "skip_compression",
               "annotation": "bool",
-              "description": "Skip pigz compression of SRA downloads.",
-              "default": "False"
+              "description": "Skip compression of SRA downloads"
+            },
+            {
+              "name": "gzip_level",
+              "annotation": "int",
+              "description": "Gzip compression level for SRA downloads (1-9)"
             },
             {
               "name": "protocol",
@@ -311,14 +343,14 @@
             }
           ],
           "returns": "tuple",
-          "lineno": 473
+          "lineno": 496
         },
         "main": {
           "name": "main",
           "description": "",
           "args": [],
           "returns": null,
-          "lineno": 570
+          "lineno": 599
         }
       },
       "classes": {},
@@ -353,10 +385,7 @@
             "wget"
           ],
           "SRA": [
-            "prefetch",
-            "fasterq-dump",
-            "vdb-config",
-            "pigz"
+            "sracha"
           ]
         }
       }
@@ -735,11 +764,11 @@
             }
           ],
           "returns": "list",
-          "lineno": 23
+          "lineno": 20
         },
         "sra_download": {
           "name": "sra_download",
-          "description": "Download FASTQs from SRA using fasterq-dump.\n\nArgs:\n    accession (str): The accession to download associated FASTQs.\n    outdir (str): Directory to write FASTQs to.\n    cpus (int, optional): Number of CPUs to use. Defaults to 1.\n    max_attempts (int, optional): Maximum number of download attempts. Defaults to 10.\n    force (bool, optional): Force overwrite of existing files\n    ignore_md5 (bool, optional): Ignore MD5 checksums for downloaded files\n    sleep (int, default = 10): Amount of seconds to sleep in between attempts\n    sra_lite (bool, optional): If True, prefer SRA Lite downloads\n\nReturns:\n    Union[dict, str]: A dictionary of the FASTQs and their paired status, or SRA_FAILED on error.\n        The dict contains:\n        - r1 (str): Path to R1 FASTQ file\n        - r2 (str): Path to R2 FASTQ file (empty string if single-end)\n        - single_end (bool): True if single-end, False if paired-end\n        - orphan (str | None): Path to orphan reads file if present (paired-end with unpaired reads)",
+          "description": "Download FASTQs from SRA using sracha.\n\nArgs:\n    accession: The accession to download associated FASTQs.\n    outdir: Directory to write FASTQs to.\n    cpus: Number of CPUs for conversion and compression. Defaults to 1.\n    connections: HTTP connections per file for download. Defaults to 8.\n    max_attempts: Maximum number of download attempts. Defaults to 10.\n    force: Force overwrite of existing files.\n    no_strict: Downgrade integrity failures to warnings.\n    sleep: Seconds to sleep between retry attempts. Defaults to 10.\n    sra_lite: If True, prefer SRA Lite downloads (simplified quality scores).\n    compress: If True, gzip compress output. Defaults to True.\n    gzip_level: Gzip compression level (1-9). Defaults to 1.\n\nReturns:\n    A dictionary of the FASTQs and their paired status, or SRA_FAILED on error.\n    The dict contains:\n    - r1 (str): Path to R1 FASTQ file\n    - r2 (str): Path to R2 FASTQ file (empty string if single-end)\n    - single_end (bool): True if single-end, False if paired-end\n    - orphan (str | None): Path to orphan reads file if present",
           "args": [
             {
               "name": "accession",
@@ -754,8 +783,14 @@
             {
               "name": "cpus",
               "annotation": "int",
-              "description": "Number of CPUs to use. Defaults to 1.",
+              "description": "Number of CPUs for conversion and compression. Defaults to 1.",
               "default": "1"
+            },
+            {
+              "name": "connections",
+              "annotation": "int",
+              "description": "HTTP connections per file for download. Defaults to 8.",
+              "default": "8"
             },
             {
               "name": "max_attempts",
@@ -766,35 +801,42 @@
             {
               "name": "force",
               "annotation": "bool",
-              "description": "Force overwrite of existing files",
+              "description": "Force overwrite of existing files.",
               "default": "False"
             },
             {
-              "name": "ignore_md5",
+              "name": "no_strict",
               "annotation": "bool",
-              "description": "Ignore MD5 checksums for downloaded files",
+              "description": "Downgrade integrity failures to warnings.",
               "default": "False"
             },
             {
               "name": "sleep",
               "annotation": "int",
-              "description": "Amount of seconds to sleep in between attempts",
+              "description": "Seconds to sleep between retry attempts. Defaults to 10.",
               "default": "10"
             },
             {
               "name": "sra_lite",
               "annotation": "bool",
-              "description": "If True, prefer SRA Lite downloads",
+              "description": "If True, prefer SRA Lite downloads (simplified quality scores).",
               "default": "False"
             },
             {
               "name": "compress",
               "annotation": "bool",
+              "description": "If True, gzip compress output. Defaults to True.",
               "default": "True"
+            },
+            {
+              "name": "gzip_level",
+              "annotation": "int",
+              "description": "Gzip compression level (1-9). Defaults to 1.",
+              "default": "1"
             }
           ],
           "returns": "Union[dict, str]",
-          "lineno": 55
+          "lineno": 52
         }
       },
       "classes": {},
@@ -859,7 +901,7 @@
             }
           ],
           "returns": "Optional[str]",
-          "lineno": 90
+          "lineno": 93
         },
         "merge_runs": {
           "name": "merge_runs",
@@ -877,7 +919,7 @@
             }
           ],
           "returns": "None",
-          "lineno": 115
+          "lineno": 118
         },
         "_all_fieldnames": {
           "name": "_all_fieldnames",
@@ -890,7 +932,7 @@
             }
           ],
           "returns": "List[str]",
-          "lineno": 145
+          "lineno": 148
         },
         "write_tsv": {
           "name": "write_tsv",
@@ -912,7 +954,7 @@
             }
           ],
           "returns": "None",
-          "lineno": 172
+          "lineno": 175
         },
         "validate_query": {
           "name": "validate_query",
@@ -925,7 +967,7 @@
             }
           ],
           "returns": "str",
-          "lineno": 254
+          "lineno": 257
         }
       },
       "classes": {},
@@ -993,7 +1035,7 @@
       "name": "--ignore",
       "short": "-I",
       "is_flag": true,
-      "help": "Ignore MD5 checksums for downloaded files."
+      "help": "Skip MD5 validation (ENA) or relax integrity checks (SRA)."
     },
     {
       "name": "--protocol",
@@ -1009,7 +1051,13 @@
     {
       "name": "--skip-compression",
       "is_flag": true,
-      "help": "Skip pigz compression of SRA downloads."
+      "help": "Skip compression of SRA downloads."
+    },
+    {
+      "name": "--gzip-level",
+      "default": 1,
+      "type": "click.IntRange(1, 9)",
+      "help": "Gzip compression level for SRA downloads (1=fast, 9=best)."
     },
     {
       "name": "--only-provider",
@@ -1024,7 +1072,12 @@
     {
       "name": "--cpus",
       "default": 4,
-      "help": "Total cpus used for downloading from SRA."
+      "help": "Total cpus used for SRA conversion and compression."
+    },
+    {
+      "name": "--connections",
+      "default": 8,
+      "help": "HTTP connections per file for SRA downloads."
     },
     {
       "name": "--silent",
@@ -1043,13 +1096,13 @@
       "requests": "^2.31.0",
       "pysradb": "^2.3.0",
       "rich-click": "^1.6.1",
-      "rich": "^13.3.1",
+      "rich": ">=13.3.1",
       "markdown-it-py": "2.2.0",
       "pandas": "^2.2.3"
     },
     "dev": {
       "ruff": ">=0.15",
-      "pytest": "^8.3.3",
+      "pytest": ">=9.0.3,<10.0.0",
       "pytest-cov": "^4.1.0",
       "pytest-mock": "^3.12.0",
       "responses": "^0.24.0"
@@ -1230,10 +1283,7 @@
         "wget"
       ],
       "SRA": [
-        "prefetch",
-        "fasterq-dump",
-        "vdb-config",
-        "pigz"
+        "sracha"
       ]
     }
   }

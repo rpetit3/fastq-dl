@@ -21,11 +21,10 @@ Runs, users can optionally merge the runs.
 `fastq-dl` depends on the following:
 
 ```{yaml}
-    - pigz
     - pip
     - python >=3.10
     - pysradb >=2.3
-    - sra-tools >=3.0.1
+    - sracha
     - wget
 ```
 

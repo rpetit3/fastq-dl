@@ -2,7 +2,7 @@
 
 > Download FASTQ files from SRA or ENA repositories.
 
-- **Version**: 3.1.0
+- **Version**: 4.0.0
 - **Repository**: https://github.com/rpetit3/fastq-dl
 - **License**: MIT
 - **Python**: >=3.10,<3.14
@@ -84,13 +84,15 @@ CLI (accession input)
 | `--max-attempts` (`-m`) | 3 | Maximum number of download attempts. |
 | `--sleep` (`-s`) | 10 | Minimum amount of time to sleep between retries (API query and download) |
 | `--force` (`-F`) | off | Overwrite existing files. |
-| `--ignore` (`-I`) | off | Ignore MD5 checksums for downloaded files. |
+| `--ignore` (`-I`) | off | Skip MD5 validation (ENA) or relax integrity checks (SRA). |
 | `--protocol` | ftp | Protocol to use for ENA downloads. |
 | `--sra-lite` | off | Set preference to SRA Lite |
-| `--skip-compression` | off | Skip pigz compression of SRA downloads. |
+| `--skip-compression` | off | Skip compression of SRA downloads. |
+| `--gzip-level` | 1 | Gzip compression level for SRA downloads (1=fast, 9=best). |
 | `--only-provider` | off | Only attempt download from specified provider. |
 | `--only-download-metadata` | off | Skip FASTQ downloads, and retrieve only the metadata. |
-| `--cpus` | 4 | Total cpus used for downloading from SRA. |
+| `--cpus` | 4 | Total cpus used for SRA conversion and compression. |
+| `--connections` | 8 | HTTP connections per file for SRA downloads. |
 | `--silent` | off | Only critical errors will be printed. |
 | `--verbose` (`-v`) | off | Print debug related text. |
 
