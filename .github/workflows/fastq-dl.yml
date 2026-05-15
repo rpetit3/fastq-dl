@@ -10,6 +10,9 @@ on:
     - cron: "0 2 * * 0"
   workflow_dispatch: # Allow manual triggers
 
+permissions:
+  contents: read
+
 jobs:
   # Job 1: Fast unit tests on all Python versions
   unit-tests:
@@ -161,6 +164,9 @@ jobs:
   # Job 3: Notify on scheduled run failures
   notify-failure:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     needs: [unit-tests, integration-tests]
     if: failure() && github.event_name == 'schedule'
     steps:
