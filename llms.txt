@@ -115,9 +115,7 @@ Exit codes: `1` = validation/provider/download error, `2` = empty/not found/miss
 
 - `wget` — ENA FTP/HTTPS downloads
 - `prefetch` — SRA file download (from sra-tools)
-- `fasterq-dump` — SRA to FASTQ conversion (from sra-tools)
-- `vdb-config` — SRA configuration (from sra-tools)
-- `pigz` — Parallel gzip compression
+- `sracha` — SRA download, FASTQ conversion, and compression (from sracha-rs)
 
 ## Development
 

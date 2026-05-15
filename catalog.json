@@ -6,7 +6,7 @@
   "homepage": "https://github.com/rpetit3/fastq-dl",
   "license": "MIT",
   "python_requires": ">=3.10,<3.14",
-  "generated_at": "2026-05-15T20:06:52.897694+00:00",
+  "generated_at": "2026-05-15T20:19:12.209278+00:00",
   "modules": {
     "fastq_dl.__init__": {
       "path": "fastq_dl/__init__.py",
@@ -1119,18 +1119,9 @@
       "package": "sra-tools"
     },
     {
-      "name": "fasterq-dump",
-      "purpose": "SRA to FASTQ conversion",
-      "package": "sra-tools"
-    },
-    {
-      "name": "vdb-config",
-      "purpose": "SRA configuration",
-      "package": "sra-tools"
-    },
-    {
-      "name": "pigz",
-      "purpose": "Parallel gzip compression"
+      "name": "sracha",
+      "purpose": "SRA download, FASTQ conversion, and compression",
+      "package": "sracha-rs"
     }
   ],
   "exceptions": {

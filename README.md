@@ -56,48 +56,57 @@ fastq-dl --check
 
 ```{bash}
 fastq-dl --help
-                                                                                     
- Usage: fastq-dl [OPTIONS]                                                           
-                                                                                     
- Download FASTQ files from ENA or SRA.                                               
-                                                                                     
-╭─ Required Options ────────────────────────────────────────────────────────────────╮
-│ *  --accession  -a  TEXT  ENA/SRA accession to query. (Study, Sample, Experiment, │
-│                           Run accession) [required]                               │
-╰───────────────────────────────────────────────────────────────────────────────────╯
-╭─ Provider Options ────────────────────────────────────────────────────────────────╮
-│ --provider          [ena|sra]    Specify which provider (ENA or SRA) to use.      │
-│                                  [default: ena]                                   │
-│ --protocol          [ftp|https]  Protocol to use for ENA downloads. [default:     │
-│                                  ftp]                                             │
-│ --sra-lite                       Set preference to SRA Lite                       │
-│ --skip-compression               Skip pigz compression of SRA downloads.          │
-╰───────────────────────────────────────────────────────────────────────────────────╯
-╭─ Download Options ────────────────────────────────────────────────────────────────╮
-│ --max-attempts            -m  INTEGER  Maximum number of download attempts.       │
-│                                        [default: 3]                               │
-│ --only-provider                        Only attempt download from specified       │
-│                                        provider.                                  │
-│ --only-download-metadata               Skip FASTQ downloads, and retrieve only    │
-│                                        the metadata.                              │
-│ --group-by-experiment                  Group Runs by experiment accession.        │
-│ --group-by-sample                      Group Runs by sample accession.            │
-│ --ignore                  -I           Ignore MD5 checksums for downloaded files. │
-╰───────────────────────────────────────────────────────────────────────────────────╯
-╭─ Additional Options ──────────────────────────────────────────────────────────────╮
-│ --outdir   -o  TEXT     Directory to output downloads to. [default: ./]           │
-│ --prefix       TEXT     Prefix to use for naming log files. [default: fastq]      │
-│ --cpus         INTEGER  Total cpus used for downloading from SRA. [default: 4]    │
-│ --force    -F           Overwrite existing files.                                 │
-│ --silent                Only critical errors will be printed.                     │
-│ --sleep    -s  INTEGER  Minimum amount of time to sleep between retries (API      │
-│                         query and download) [default: 10]                         │
-│ --check                 Check that required external tools are installed and      │
-│                         exit.                                                     │
-│ --version  -V           Show the version and exit.                                │
-│ --verbose  -v           Print debug related text.                                 │
-│ --help     -h           Show this message and exit.                               │
-╰───────────────────────────────────────────────────────────────────────────────────╯
+                                                                               
+ Usage: fastq-dl [OPTIONS]                                                     
+                                                                               
+ Download FASTQ files from ENA or SRA.                                         
+                                                                               
+╭─ Required Options ──────────────────────────────────────────────────────────╮
+│ *  --accession  -a  TEXT  ENA/SRA accession to query. (Study, Sample,       │
+│                           Experiment, Run accession) [required]             │
+╰─────────────────────────────────────────────────────────────────────────────╯
+╭─ Provider Options ──────────────────────────────────────────────────────────╮
+│ --provider          [ena|sra]                Specify which provider (ENA or │
+│                                              SRA) to use. [default: ena]    │
+│ --protocol          [ftp|https]              Protocol to use for ENA        │
+│                                              downloads. [default: ftp]      │
+│ --sra-lite                                   Set preference to SRA Lite     │
+│ --skip-compression                           Skip compression of SRA        │
+│                                              downloads.                     │
+│ --gzip-level        INTEGER RANGE [1<=x<=9]  Gzip compression level for SRA │
+│                                              downloads (1=fast, 9=best).    │
+│                                              [default: 1]                   │
+╰─────────────────────────────────────────────────────────────────────────────╯
+╭─ Download Options ──────────────────────────────────────────────────────────╮
+│ --max-attempts            -m  INTEGER  Maximum number of download attempts. │
+│                                        [default: 3]                         │
+│ --only-provider                        Only attempt download from specified │
+│                                        provider.                            │
+│ --only-download-metadata               Skip FASTQ downloads, and retrieve   │
+│                                        only the metadata.                   │
+│ --group-by-experiment                  Group Runs by experiment accession.  │
+│ --group-by-sample                      Group Runs by sample accession.      │
+│ --ignore                  -I           Skip MD5 validation (ENA) or relax   │
+│                                        integrity checks (SRA).              │
+╰─────────────────────────────────────────────────────────────────────────────╯
+╭─ Additional Options ────────────────────────────────────────────────────────╮
+│ --outdir       -o  TEXT     Directory to output downloads to. [default: ./] │
+│ --prefix           TEXT     Prefix to use for naming log files. [default:   │
+│                             fastq]                                          │
+│ --cpus             INTEGER  Total cpus used for SRA conversion and          │
+│                             compression. [default: 4]                       │
+│ --connections      INTEGER  HTTP connections per file for SRA downloads.    │
+│                             [default: 8]                                    │
+│ --force        -F           Overwrite existing files.                       │
+│ --silent                    Only critical errors will be printed.           │
+│ --sleep        -s  INTEGER  Minimum amount of time to sleep between retries │
+│                             (API query and download) [default: 10]          │
+│ --check                     Check that required external tools are          │
+│                             installed and exit.                             │
+│ --version      -V           Show the version and exit.                      │
+│ --verbose      -v           Print debug related text.                       │
+│ --help         -h           Show this message and exit.                     │
+╰─────────────────────────────────────────────────────────────────────────────╯
 ```
 
 `fastq-dl` requires a single ENA/SRA Study, Sample, Experiment, or Run accession and FASTQs
@@ -153,11 +162,27 @@ preference to SRA Lite.
 
 ### --skip-compression
 
-By default, FASTQs downloaded from SRA are compressed using `pigz` to save space. However,
+By default, FASTQs downloaded from SRA are compressed using `sracha` to save space. However,
 this can be time consuming (especially for large files!). You can use the `--skip-compression`
 option to skip this step and save time at the cost of disk space.
 
 _This option is ignored for ENA downloads as they are already provided as GZip compressed files._
+
+### --gzip-level
+
+Controls the gzip compression level for SRA downloads, ranging from 1 (fastest, least
+compression) to 9 (slowest, best compression). The default is 1, which prioritizes speed.
+If disk space is a concern and you can afford longer download times, increase this value.
+
+_This option is ignored when `--skip-compression` is used or for ENA downloads._
+
+### --connections
+
+Controls the number of HTTP connections used per file for SRA downloads. The default is 8.
+Increasing this value may improve download speeds on high-bandwidth connections, while
+decreasing it can help on slower or less stable networks.
+
+_This option only applies to SRA downloads._
 
 ## Output Files
 
