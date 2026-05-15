@@ -13,11 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **BREAKING**: Replaced sra-tools (prefetch, fasterq-dump, vdb-config, pigz) with [sracha](https://github.com/rnabioco/sracha-rs), a pure-Rust SRA downloader and FASTQ converter (4-11x faster, no C dependencies)
 - `--ignore` flag now maps to `--no-strict` for SRA downloads (relaxes integrity checks) instead of skipping MD5 verification
-- `--cpus` now controls both thread count and HTTP connection count for SRA downloads
 
 ### Added
 
 - `--gzip-level` option to control gzip compression level for SRA downloads (1-9, default 1)
+- `--connections` option to control HTTP connections per file for SRA downloads (default 8)
 
 ### Fixed
 
