@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-05-15
+
+### Changed
+
+- **BREAKING**: Replaced sra-tools (prefetch, fasterq-dump, vdb-config, pigz) with [sracha](https://github.com/rnabioco/sracha-rs), a pure-Rust SRA downloader and FASTQ converter (4-11x faster, no C dependencies)
+- `--ignore` flag now maps to `--no-strict` for SRA downloads (relaxes integrity checks) instead of skipping MD5 verification
+- `--cpus` now controls both thread count and HTTP connection count for SRA downloads
+
+### Added
+
+- `--gzip-level` option to control gzip compression level for SRA downloads (1-9, default 1)
+
+### Fixed
+
+- Pinned pytest lower bound to >=9.0.3 to address vulnerable tmpdir handling (dependabot #28)
+
+### Removed
+
+- Dependency on sra-tools (prefetch, fasterq-dump, vdb-config) and pigz
+- Support for legacy sequencing platforms (454, SOLiD, Ion Torrent) via SRA provider -- sracha does not support these
+
+[4.0.0]: https://github.com/rpetit3/fastq-dl/compare/v3.1.1...v4.0.0
+
 ## [3.1.1] - 2026-05-14
 
 ### Fixed

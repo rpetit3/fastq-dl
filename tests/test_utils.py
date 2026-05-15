@@ -158,15 +158,15 @@ class TestExecute:
         assert result == ENA_FAILED
 
     @patch("fastq_dl.utils.subprocess.run")
-    def test_sra_exit_code_3_returns_sra_failed(self, mock_run):
-        """Test SRA-specific exit code 3 handling."""
+    def test_sra_not_found_returns_sra_failed(self, mock_run):
+        """Test SRA not-found detection via stderr parsing."""
         mock_run.side_effect = subprocess.CalledProcessError(
-            returncode=3,
-            cmd="prefetch SRR123456",
-            stderr="Item not found\nMore info",
+            returncode=1,
+            cmd="sracha get SRR123456",
+            stderr="not found: SRR123456\nMore info",
         )
 
-        result = execute("prefetch SRR123456", is_sra=True)
+        result = execute("sracha get SRR123456", is_sra=True)
 
         assert result == SRA_FAILED
 

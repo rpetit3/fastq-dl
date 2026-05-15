@@ -332,6 +332,45 @@ class TestCLIOptions:
 
         assert result.exit_code == 0
 
+    @patch("fastq_dl.cli.download.validate_query")
+    @patch("fastq_dl.cli.download.get_run_info")
+    @patch("fastq_dl.cli.download.write_tsv")
+    def test_gzip_level_flag(
+        self, mock_write_tsv, mock_get_run_info, mock_validate_query, runner, tmp_path
+    ):
+        """Test --gzip-level flag is accepted with valid value."""
+        mock_validate_query.return_value = "run_accession=SRR123456"
+        mock_get_run_info.return_value = ("ENA", [])
+
+        result = runner.invoke(
+            fastqdl,
+            [
+                "--accession",
+                "SRR123456",
+                "--gzip-level",
+                "6",
+                "--only-download-metadata",
+                "--outdir",
+                str(tmp_path),
+            ],
+        )
+
+        assert result.exit_code == 0
+
+    def test_gzip_level_invalid(self, runner):
+        """Test --gzip-level rejects out-of-range values."""
+        result = runner.invoke(
+            fastqdl,
+            ["--accession", "SRR123456", "--gzip-level", "0"],
+        )
+        assert result.exit_code != 0
+
+        result = runner.invoke(
+            fastqdl,
+            ["--accession", "SRR123456", "--gzip-level", "10"],
+        )
+        assert result.exit_code != 0
+
 
 class TestExitCodes:
     """Tests for exit codes on download failures."""
@@ -488,17 +527,14 @@ class TestCheckDependencies:
         assert result.exit_code == 0
         assert "All dependencies found." in result.output
         assert "wget: Found (/usr/bin/wget)" in result.output
-        assert "prefetch: Found (/usr/bin/prefetch)" in result.output
-        assert "fasterq-dump: Found (/usr/bin/fasterq-dump)" in result.output
-        assert "vdb-config: Found (/usr/bin/vdb-config)" in result.output
-        assert "pigz: Found (/usr/bin/pigz)" in result.output
+        assert "sracha: Found (/usr/bin/sracha)" in result.output
 
     @patch("fastq_dl.cli.download.shutil.which")
     def test_check_some_missing(self, mock_which, runner):
         """Test --check when some tools are missing."""
 
         def which_side_effect(tool):
-            if tool in ("prefetch", "fasterq-dump", "vdb-config"):
+            if tool == "sracha":
                 return None
             return f"/usr/bin/{tool}"
 
@@ -506,7 +542,7 @@ class TestCheckDependencies:
         result = runner.invoke(fastqdl, ["--check"])
         assert result.exit_code == 1
         assert "Some dependencies are missing." in result.output
-        assert "prefetch: Not found" in result.output
+        assert "sracha: Not found" in result.output
         assert "wget: Found" in result.output
 
     @patch("fastq_dl.cli.download.shutil.which")

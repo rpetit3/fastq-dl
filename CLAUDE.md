@@ -4,7 +4,7 @@
 
 **fastq-dl** is a Python CLI tool for downloading FASTQ sequencing files from the European Nucleotide Archive (ENA) or Sequence Read Archive (SRA). It accepts various accession types (Project, Study, BioSample, Sample, Experiment, Run) and handles provider fallback, retry logic, and optional run merging.
 
-- **Version**: 3.1.0
+- **Version**: 4.0.0
 - **License**: MIT
 - **Python**: >=3.10, <3.14
 - **Repository**: https://github.com/rpetit3/fastq-dl
@@ -47,7 +47,7 @@ fastq-dl/
 │   │   ├── __init__.py
 │   │   ├── generic.py           # Provider coordination and fallback
 │   │   ├── ena.py               # ENA downloads via wget (FTP or HTTPS)
-│   │   └── sra.py               # SRA downloads via sra-tools
+│   │   └── sra.py               # SRA downloads via sracha
 │   ├── constants.py             # Shared constants (URLs, suffixes, sentinels)
 │   ├── exceptions.py            # Custom exception hierarchy (8 types)
 │   └── utils.py                 # Utilities (execute, md5sum, merge_runs, write_tsv)
@@ -99,7 +99,7 @@ fastq-dl/
 
 ### Provider Pattern
 - **ENA**: Uses HTTP API for metadata, wget for FTP/HTTPS downloads, MD5 validation
-- **SRA**: Uses pysradb for metadata, prefetch + fasterq-dump for downloads, pigz for compression
+- **SRA**: Uses pysradb for metadata, sracha for download + FASTQ conversion + compression
 - Automatic fallback between providers (configurable with `--provider` and `--only-provider`)
 
 ### Entry Point
@@ -140,10 +140,10 @@ Exit codes: `1` = validation/provider/download error, `2` = empty result/not fou
 
 ### providers/sra.py
 - `get_sra_metadata(query)` — Queries SRA via pysradb, returns `[success: bool, data]`
-- `sra_download(accession, outdir, ...)` — Uses prefetch + fasterq-dump + optional pigz compression
+- `sra_download(accession, outdir, ...)` — Uses sracha get for download, conversion, and compression
 
 ### utils.py
-- `execute(cmd, ...)` — Subprocess wrapper with retries and SRA-specific error handling (exit code 3 = not found)
+- `execute(cmd, ...)` — Subprocess wrapper with retries and SRA-specific stderr-based not-found detection
 - `md5sum(fastq)` — Calculates MD5 in 10MB chunks
 - `merge_runs(runs, output)` — Concatenates FASTQs, validates all files exist first
 - `validate_query(query)` — Regex validation for accession types (Project, Study, BioSample, Sample, Experiment, Run)
@@ -194,7 +194,8 @@ Organized into groups via `click.rich_click.OPTION_GROUPS`:
 | `--provider` | `ena` | Provider to use (ena or sra) |
 | `--protocol` | `ftp` | Protocol for ENA downloads (ftp or https) |
 | `--sra-lite` | off | Use SRA Lite (compressed quality scores) |
-| `--skip-compression` | off | Skip pigz compression of SRA downloads |
+| `--skip-compression` | off | Skip compression of SRA downloads |
+| `--gzip-level` | 1 | Gzip compression level for SRA downloads (1-9) |
 
 ### Download Options
 | Option | Short | Default | Description |
@@ -204,7 +205,7 @@ Organized into groups via `click.rich_click.OPTION_GROUPS`:
 | `--only-download-metadata` | | off | Skip downloads, retrieve metadata only |
 | `--group-by-experiment` | | off | Group and merge runs by experiment accession |
 | `--group-by-sample` | | off | Group and merge runs by sample accession |
-| `--ignore` | `-I` | off | Skip MD5 checksum validation |
+| `--ignore` | `-I` | off | Skip MD5 validation (ENA) or relax integrity checks (SRA) |
 
 ### Additional Options
 | Option | Short | Default | Description |
@@ -221,10 +222,7 @@ Organized into groups via `click.rich_click.OPTION_GROUPS`:
 
 Required at runtime (install via conda/environment.yml):
 - `wget` — FTP/HTTPS downloads (ENA)
-- `prefetch` — SRA file download (from sra-tools)
-- `fasterq-dump` — SRA to FASTQ conversion (from sra-tools)
-- `vdb-config` — SRA configuration (from sra-tools)
-- `pigz` — Parallel gzip compression
+- `sracha` — SRA download, FASTQ conversion, and compression (from sracha-rs)
 
 ## Testing
 
@@ -359,11 +357,11 @@ just tag  # Prints commands to run
 
 1. **ENA API**: Returns TSV format, queries use `fields=all`
 2. **SRA Lite**: Compressed quality scores, enabled via `--sra-lite` flag
-3. **Paired-end detection**: ENA uses `library_layout` field; SRA uses `fasterq-dump --split-3`
+3. **Paired-end detection**: ENA uses `library_layout` field; SRA uses sracha `--split split-3` (default)
 4. **Orphan reads**: SRA can produce orphan reads file from paired-end data
-5. **MD5 validation**: Enabled by default, skip with `--ignore` flag
+5. **MD5 validation**: ENA validates by default (skip with `--ignore`); SRA (sracha) always verifies integrity (`--ignore` maps to `--no-strict`)
 6. **Protocol choice**: ENA supports both FTP (default) and HTTPS via `--protocol`
-7. **Compression skip**: SRA downloads can skip pigz compression via `--skip-compression`
+7. **Compression**: SRA downloads compressed by default via sracha (skip with `--skip-compression`, tune with `--gzip-level`)
 
 ## Catalog and LLM Discovery
 

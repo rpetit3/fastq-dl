@@ -32,5 +32,5 @@ MERGED_R2_SUFFIX = "_R2.fastq.gz"
 # External tool dependencies grouped by provider
 EXTERNAL_DEPENDENCIES = {
     "ENA": ["wget"],
-    "SRA": ["prefetch", "fasterq-dump", "vdb-config", "pigz"],
+    "SRA": ["sracha"],
 }

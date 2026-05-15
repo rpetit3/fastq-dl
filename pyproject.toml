@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastq-dl"
-version = "3.1.1"
+version = "4.0.0"
 description = "Download FASTQ files from SRA or ENA repositories."
 authors = [
     "Robert A. Petit III <robbie.petit@gmail.com>",
@@ -29,7 +29,7 @@ pandas = "^2.2.3"
 
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.15"
-pytest = ">=8.3.3,<10.0.0"
+pytest = ">=9.0.3,<10.0.0"
 pytest-cov = "^4.1.0"
 pytest-mock = "^3.12.0"
 responses = "^0.24.0"

@@ -71,8 +71,11 @@ def execute(
             logging.debug(f"STDOUT: {e.stdout}")
             logging.debug(f"STDERR: {e.stderr}")
 
-            if is_sra and e.returncode == 3:
-                # The FASTQ isn't on SRA for some reason, try to download from ENA
+            # sracha's Error::NotFound produces stderr "not found: {accession}"
+            # (see rnabioco/sracha-rs error.rs). Unlike sra-tools (exit code 3),
+            # sracha exits 1 for all errors, so we parse stderr to distinguish
+            # "not found" (immediate ENA fallback) from transient failures (retry).
+            if is_sra and e.stderr and "not found:" in e.stderr.lower():
                 error_msg = e.stderr.split("\n")[0] if e.stderr else "Unknown error"
                 logging.error(error_msg)
                 return SRA_FAILED
