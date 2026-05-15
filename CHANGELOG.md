@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `--gzip-level` option to control gzip compression level for SRA downloads (1-9, default 1)
 
+### Fixed
+
+- Pinned pytest lower bound to >=9.0.3 to address vulnerable tmpdir handling (dependabot #28)
+
 ### Removed
 
 - Dependency on sra-tools (prefetch, fasterq-dump, vdb-config) and pigz
