@@ -91,7 +91,7 @@ def sra_download(
     outdir = Path(outdir)
     fastqs = {"r1": "", "r2": "", "single_end": True, "orphan": None}
     if compress:
-        se = outdir / f"{outdir}/{accession}{SE_SUFFIX}"
+        se = outdir / f"{accession}{SE_SUFFIX}"
         pe1 = outdir / f"{accession}{PE_R1_SUFFIX}"
         pe2 = outdir / f"{accession}{PE_R2_SUFFIX}"
     else:
