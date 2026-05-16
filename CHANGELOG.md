@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-05-15
+
+### Fixed
+
+- Auto-detect SSL certificates (via `certifi`) for sracha in container environments where `SSL_CERT_FILE` is not set
+- Handle `SRA_DOWNLOAD_FAILED` sentinel in `sra_download()` to prevent silent continuation when sracha crashes
+
+[4.0.1]: https://github.com/rpetit3/fastq-dl/compare/v4.0.0...v4.0.1
+
 ## [4.0.0] - 2026-05-15
 
 ### Changed

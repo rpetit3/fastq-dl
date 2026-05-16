@@ -1,8 +1,10 @@
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Union
 
+import certifi
 from pysradb import SRAweb
 
 from fastq_dl.constants import (
@@ -12,6 +14,7 @@ from fastq_dl.constants import (
     PE_R2_SUFFIX_UNCOMPRESSED,
     SE_SUFFIX,
     SE_SUFFIX_UNCOMPRESSED,
+    SRA_DOWNLOAD_FAILED,
     SRA_FAILED,
 )
 from fastq_dl.utils import execute
@@ -105,6 +108,10 @@ def sra_download(
     if not se.exists() and not (pe1.exists() and pe2.exists()):
         outdir.mkdir(parents=True, exist_ok=True)
 
+        if not os.environ.get("SSL_CERT_FILE"):
+            os.environ["SSL_CERT_FILE"] = certifi.where()
+            logging.debug(f"Set SSL_CERT_FILE={os.environ['SSL_CERT_FILE']}")
+
         sracha_cmd = [
             "sracha",
             "get",
@@ -144,7 +151,7 @@ def sra_download(
             sleep=sleep,
         )
 
-        if outcome == SRA_FAILED:
+        if outcome in {SRA_FAILED, SRA_DOWNLOAD_FAILED}:
             return outcome
 
         logging.info(f"Downloaded FASTQs for {accession}")

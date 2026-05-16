@@ -1,10 +1,11 @@
 """Tests for SRA provider functionality."""
 
+import os
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
-from fastq_dl.constants import SRA_FAILED
+from fastq_dl.constants import SRA_DOWNLOAD_FAILED, SRA_FAILED
 from fastq_dl.providers.sra import get_sra_metadata, sra_download
 
 
@@ -120,6 +121,15 @@ class TestSraDownload:
         result = sra_download("SRR123456", str(tmp_outdir))
 
         assert result == SRA_FAILED
+
+    @patch("fastq_dl.providers.sra.execute")
+    def test_download_failure_sra_download_failed(self, mock_execute, tmp_outdir):
+        """Test handling of sracha crash/non-not-found failure."""
+        mock_execute.return_value = SRA_DOWNLOAD_FAILED
+
+        result = sra_download("SRR123456", str(tmp_outdir))
+
+        assert result == SRA_DOWNLOAD_FAILED
 
     @patch("fastq_dl.providers.sra.execute")
     def test_sra_lite_preference(self, mock_execute, tmp_outdir):
@@ -361,3 +371,27 @@ class TestSraDownload:
         assert "-O" in cmd
         assert "--no-progress" in cmd
         assert "-y" in cmd
+
+    @patch("fastq_dl.providers.sra.execute")
+    def test_sets_ssl_cert_file_when_missing(
+        self, mock_execute, tmp_outdir, monkeypatch
+    ):
+        """Test SSL_CERT_FILE is set from certifi when not present."""
+        monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+        mock_execute.return_value = SRA_FAILED
+
+        sra_download("SRR123456", str(tmp_outdir))
+
+        assert os.environ.get("SSL_CERT_FILE") is not None
+
+    @patch("fastq_dl.providers.sra.execute")
+    def test_preserves_existing_ssl_cert_file(
+        self, mock_execute, tmp_outdir, monkeypatch
+    ):
+        """Test existing SSL_CERT_FILE is not overwritten."""
+        monkeypatch.setenv("SSL_CERT_FILE", "/custom/certs.pem")
+        mock_execute.return_value = SRA_FAILED
+
+        sra_download("SRR123456", str(tmp_outdir))
+
+        assert os.environ["SSL_CERT_FILE"] == "/custom/certs.pem"
