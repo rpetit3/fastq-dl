@@ -1,0 +1,4 @@
+commands:
+  check: just check
+  test: just test
+allow: []
